@@ -22,12 +22,10 @@ import {sessionAtom, trackletObjectsAtom} from '@/demo/atoms';
 import {useAtomValue} from 'jotai';
 import {useState, useMemo} from 'react';
 import OptionButton from './OptionButton';
-import useVideo from '@/common/components/video/editor/useVideo';
 
 export default function ExportOption() {
   const session = useAtomValue(sessionAtom);
   const trackletObjects = useAtomValue(trackletObjectsAtom);
-  const video = useVideo();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Get video metadata
@@ -74,7 +72,7 @@ export default function ExportOption() {
           label: 'Exporting...',
         }}
         onClick={handleOpenModal}
-        disabled={!hasTrackedObjects || !session}
+        isDisabled={!hasTrackedObjects || !session}
       />
 
       <ExportConfigModal
