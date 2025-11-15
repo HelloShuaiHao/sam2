@@ -3,20 +3,19 @@
 
 services:
   frontend-dev:
-    image: sam2/frontend
+    image: sam2/frontend-dev
     build:
       context: ./demo/frontend
-      dockerfile: frontend.Dockerfile
+      dockerfile: frontend.dev.Dockerfile
     ports:
       - 7262:5173  # Vite dev server port
     volumes:
       # Mount source code for hot reload
-      - ./demo/frontend/src:/app/src:ro
-      - ./demo/frontend/public:/app/public:ro
-      - ./demo/frontend/index.html:/app/index.html:ro
-      - ./demo/frontend/vite.config.ts:/app/vite.config.ts:ro
-      - ./demo/frontend/tsconfig.json:/app/tsconfig.json:ro
-    command: npm run dev -- --host 0.0.0.0 --port 5173
+      - ./demo/frontend/src:/app/src
+      - ./demo/frontend/public:/app/public
+      - ./demo/frontend/index.html:/app/index.html
+      - ./demo/frontend/vite.config.ts:/app/vite.config.ts
+      - ./demo/frontend/tsconfig.json:/app/tsconfig.json
     environment:
       - NODE_ENV=development
 
