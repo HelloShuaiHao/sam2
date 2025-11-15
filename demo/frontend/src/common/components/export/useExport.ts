@@ -15,6 +15,7 @@
  */
 
 import {useState, useCallback, useEffect, useRef} from 'react';
+import useSettingsContext from '@/settings/useSettingsContext';
 import type {ExportStatus} from './ExportProgress';
 import {FrameRateOption} from './FrameRateSelector';
 
@@ -43,6 +44,7 @@ const INITIAL_STATE: ExportState = {
 };
 
 export default function useExport(sessionId: string | null) {
+  const {settings} = useSettingsContext();
   const [exportState, setExportState] = useState<ExportState>(INITIAL_STATE);
   const pollingIntervalRef = useRef<number | null>(null);
 
@@ -62,7 +64,8 @@ export default function useExport(sessionId: string | null) {
       }));
 
       // Call GraphQL mutation to start export
-      const response = await fetch('/graphql', {
+      const graphqlUrl = `${settings.inferenceAPIEndpoint}/graphql`;
+      const response = await fetch(graphqlUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -118,7 +121,7 @@ export default function useExport(sessionId: string | null) {
         errorMessage: error instanceof Error ? error.message : 'Unknown error',
       }));
     }
-  }, [sessionId]);
+  }, [sessionId, settings.inferenceAPIEndpoint]);
 
   const startPolling = useCallback((jobId: string) => {
     // Clear any existing polling
@@ -129,7 +132,8 @@ export default function useExport(sessionId: string | null) {
     // Poll every 1 second
     pollingIntervalRef.current = window.setInterval(async () => {
       try {
-        const response = await fetch('/graphql', {
+        const graphqlUrl = `${settings.inferenceAPIEndpoint}/graphql`;
+        const response = await fetch(graphqlUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -201,7 +205,7 @@ export default function useExport(sessionId: string | null) {
         }));
       }
     }, 1000);
-  }, []);
+  }, [settings.inferenceAPIEndpoint]);
 
   const downloadExport = useCallback(() => {
     if (exportState.downloadUrl) {

@@ -14,11 +14,15 @@
  * limitations under the License.
  */
 import DownloadOption from './DownloadOption';
+import ExportOption from './ExportOption';
 
 export default function ShareSection() {
   return (
     <div className="p-5 md:p-8">
       <DownloadOption />
+      <div className="mt-4">
+        <ExportOption />
+      </div>
     </div>
   );
 }
