@@ -7,9 +7,8 @@ services:
     build:
       context: ./demo/frontend
       dockerfile: frontend.Dockerfile
-      target: development  # Use dev stage if exists, otherwise full build
     ports:
-      - 7262:5173  # Vite dev server default port
+      - 7262:5173  # Vite dev server port
     volumes:
       # Mount source code for hot reload
       - ./demo/frontend/src:/app/src:ro
@@ -17,7 +16,6 @@ services:
       - ./demo/frontend/index.html:/app/index.html:ro
       - ./demo/frontend/vite.config.ts:/app/vite.config.ts:ro
       - ./demo/frontend/tsconfig.json:/app/tsconfig.json:ro
-      - ./demo/frontend/package.json:/app/package.json:ro
     command: npm run dev -- --host 0.0.0.0 --port 5173
     environment:
       - NODE_ENV=development
