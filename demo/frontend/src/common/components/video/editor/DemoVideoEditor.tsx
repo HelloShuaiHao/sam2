@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 import TrackletsAnnotation from '@/common/components/annotations/TrackletsAnnotation';
+import ExportButton from '@/common/components/export/ExportButton';
 import useCloseSessionBeforeUnload from '@/common/components/session/useCloseSessionBeforeUnload';
 import MessagesSnackbar from '@/common/components/snackbar/MessagesSnackbar';
 import useMessagesSnackbar from '@/common/components/snackbar/useDemoMessagesSnackbar';
@@ -21,6 +22,7 @@ import {OBJECT_TOOLBAR_INDEX} from '@/common/components/toolbar/ToolbarConfig';
 import useToolbarTabs from '@/common/components/toolbar/useToolbarTabs';
 import VideoFilmstripWithPlayback from '@/common/components/video/VideoFilmstripWithPlayback';
 import {
+  DecodeEvent,
   FrameUpdateEvent,
   RenderingErrorEvent,
   SessionStartedEvent,
@@ -105,6 +107,7 @@ export default function DemoVideoEditor({video: inputVideo}: Props) {
     activeTrackletObjectIdAtom,
   );
   const setTrackletObjects = useSetAtom(trackletObjectsAtom);
+  const trackletObjects = useAtomValue(trackletObjectsAtom);
   const setFrameIndex = useSetAtom(frameIndexAtom);
   const points = useAtomValue(pointsAtom);
   const isAddObjectEnabled = useAtomValue(isAddObjectEnabledAtom);
@@ -116,6 +119,15 @@ export default function DemoVideoEditor({video: inputVideo}: Props) {
   const [renderingError, setRenderingError] = useState<ErrorObject | null>(
     null,
   );
+
+  // Video metadata for export
+  const [videoMetadata, setVideoMetadata] = useState({
+    duration: 0,
+    fps: 30,
+    totalFrames: 0,
+    width: inputVideo.width,
+    height: inputVideo.height,
+  });
 
   const {isMobile} = useScreenSize();
 
@@ -166,6 +178,18 @@ export default function DemoVideoEditor({video: inputVideo}: Props) {
 
     video?.addEventListener('renderingError', onRenderingError);
 
+    function onDecode(event: DecodeEvent) {
+      setVideoMetadata({
+        duration: event.totalFrames / event.fps,
+        fps: event.fps,
+        totalFrames: event.totalFrames,
+        width: event.width,
+        height: event.height,
+      });
+    }
+
+    video?.addEventListener('decode', onDecode);
+
     video?.initializeTracker('SAM 2', {
       inferenceEndpoint: settings.inferenceAPIEndpoint,
     });
@@ -179,6 +203,7 @@ export default function DemoVideoEditor({video: inputVideo}: Props) {
       video?.removeEventListener('sessionStartFailed', onSessionStartFailed);
       video?.removeEventListener('trackletsUpdated', onTrackletsUpdated);
       video?.removeEventListener('renderingError', onRenderingError);
+      video?.removeEventListener('decode', onDecode);
     };
   }, [
     setFrameIndex,
@@ -302,6 +327,11 @@ export default function DemoVideoEditor({video: inputVideo}: Props) {
           <div className="bg-graydark-800 w-full">
             <VideoFilmstripWithPlayback />
             <TrackletsAnnotation />
+            <ExportButton
+              sessionId={session?.id || null}
+              videoMetadata={videoMetadata}
+              hasTrackedObjects={trackletObjects.length > 0}
+            />
           </div>
         </VideoEditor>
       </div>
