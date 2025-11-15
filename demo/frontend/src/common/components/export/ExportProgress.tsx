@@ -126,9 +126,9 @@ type Props = {
   progress: number; // 0 to 1
   processedFrames?: number;
   totalFrames?: number;
-  downloadUrl?: string;
-  errorMessage?: string;
-  fileSizeMb?: number;
+  downloadUrl?: string | null;
+  errorMessage?: string | null;
+  fileSizeMb?: number | null;
   onClose: () => void;
   onDownload?: () => void;
   onRetry?: () => void;

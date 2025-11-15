@@ -123,7 +123,6 @@ export default function FrameRateSelector({
 
       <div {...stylex.props(styles.optionsGrid)}>
         {FRAME_RATE_OPTIONS.map(fps => {
-          const estimate = estimates.find(e => e.fps === fps);
           const isSelected = fps === selectedFps;
           const isDisabled = fps > sourceFps;
 
