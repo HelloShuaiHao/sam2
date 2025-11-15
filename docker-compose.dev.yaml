@@ -1,0 +1,59 @@
+# Development mode - with hot reload (no rebuild needed)
+# Usage: docker compose -f docker-compose.dev.yaml up
+
+services:
+  frontend-dev:
+    image: sam2/frontend
+    build:
+      context: ./demo/frontend
+      dockerfile: frontend.Dockerfile
+      target: development  # Use dev stage if exists, otherwise full build
+    ports:
+      - 7262:5173  # Vite dev server default port
+    volumes:
+      # Mount source code for hot reload
+      - ./demo/frontend/src:/app/src:ro
+      - ./demo/frontend/public:/app/public:ro
+      - ./demo/frontend/index.html:/app/index.html:ro
+      - ./demo/frontend/vite.config.ts:/app/vite.config.ts:ro
+      - ./demo/frontend/tsconfig.json:/app/tsconfig.json:ro
+      - ./demo/frontend/package.json:/app/package.json:ro
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+    environment:
+      - NODE_ENV=development
+
+  backend-dev:
+    image: sam2/backend
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    ports:
+      - 7263:5000
+    volumes:
+      # Mount backend code for hot reload
+      - ./demo/backend/server:/opt/sam2/demo/backend/server:ro
+      - ./demo/data/:/data/:rw
+    environment:
+      - SERVER_ENVIRONMENT=DEV
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - GUNICORN_RELOAD=True  # Enable auto-reload
+      - GUNICORN_WORKERS=1
+      - GUNICORN_THREADS=2
+      - GUNICORN_PORT=5000
+      - API_URL=http://localhost:7263
+      - DEFAULT_VIDEO_PATH=gallery/05_default_juggle.mp4
+      - FFMPEG_NUM_THREADS=1
+      - VIDEO_ENCODE_CODEC=libx264
+      - VIDEO_ENCODE_CRF=23
+      - VIDEO_ENCODE_FPS=24
+      - VIDEO_ENCODE_MAX_WIDTH=1280
+      - VIDEO_ENCODE_MAX_HEIGHT=720
+      - VIDEO_ENCODE_VERBOSE=False
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
