@@ -25,7 +25,9 @@ export default function CloseSessionButton({onSessionClose}: Props) {
   const video = useVideo();
 
   function handleCloseSession() {
-    video?.closeSession();
+    // Don't close session here - it needs to remain active for export functionality
+    // Session will be closed on browser/tab close via useCloseSessionBeforeUnload
+    // video?.closeSession();
     video?.logAnnotations();
     onSessionClose();
   }
