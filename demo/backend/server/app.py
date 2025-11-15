@@ -73,6 +73,40 @@ def send_uploaded_video(path: str):
         raise ValueError("resource not found")
 
 
+@app.route("/api/download/export/<job_id>", methods=["GET"])
+def download_export(job_id: str) -> Response:
+    """
+    Download exported annotations as ZIP file.
+
+    Args:
+        job_id: Export job ID
+
+    Returns:
+        ZIP file download response
+    """
+    try:
+        from data.export_service import ExportService
+
+        export_service = ExportService()
+        export_path = export_service.get_export_file_path(job_id)
+
+        if not export_path or not export_path.exists():
+            return make_response("Export not found", 404)
+
+        # Send file with proper headers
+        return send_from_directory(
+            export_path.parent,
+            export_path.name,
+            as_attachment=True,
+            download_name=f"sam2_export_{job_id}.zip",
+            mimetype="application/zip"
+        )
+
+    except Exception as e:
+        logger.error(f"Error downloading export {job_id}: {e}")
+        return make_response(f"Error: {str(e)}", 500)
+
+
 # TOOD: Protect route with ToS permission check
 @app.route("/propagate_in_video", methods=["POST"])
 def propagate_in_video() -> Response:
