@@ -173,7 +173,9 @@ export default function DemoVideoEditor({video: inputVideo}: Props) {
     video?.startSession(inputVideo.path);
 
     return () => {
-      video?.closeSession();
+      // Don't close session here - it needs to remain active for export functionality
+      // Session will be closed on browser/tab close via useCloseSessionBeforeUnload
+      // video?.closeSession();
       video?.removeEventListener('frameUpdate', onFrameUpdate);
       video?.removeEventListener('sessionStarted', onSessionStarted);
       video?.removeEventListener('sessionStartFailed', onSessionStartFailed);
