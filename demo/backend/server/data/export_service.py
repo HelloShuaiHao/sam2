@@ -74,8 +74,7 @@ class ExportService:
             inference_state = session["state"]
 
             # Get video metadata from inference state
-            video_segments = inference_state["video_segments"]
-            total_frames = sum(len(segment) for segment in video_segments.values())
+            total_frames = inference_state["num_frames"]
 
             # Assuming 30 FPS by default (could be extracted from video file)
             # In production, this should be read from video metadata
