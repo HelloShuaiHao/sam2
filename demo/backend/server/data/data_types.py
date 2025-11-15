@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import Iterable, List, Optional
 
 import strawberry
@@ -156,7 +157,7 @@ class SessionExpiration:
 
 # Export-related types
 @strawberry.enum
-class ExportJobStatus:
+class ExportJobStatus(str, Enum):
     """Status of an export job."""
     PENDING = "pending"
     PROCESSING = "processing"

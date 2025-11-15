@@ -74,7 +74,15 @@ export const color = stylex.defineVars({
   'gray-900': 'rgb(17 24 39)',
   'gray-800': 'rgb(26 28 31)',
   'gray-700': 'rgb(55 62 65)',
+  'gray-600': 'rgb(75 85 99)',
+  'gray-500': 'rgb(107 114 128)',
+  'gray-400': 'rgb(156 163 175)',
+  'gray-100': 'rgb(243 244 246)',
   'blue-600': 'rgb(37 99 235)',
+  'blue-500': 'rgb(59 130 246)',
+  'yellow-500': 'rgb(234 179 8)',
+  'green-500': 'rgb(34 197 94)',
+  'red-500': 'rgb(239 68 68)',
 });
 
 export const screenSizes = {
