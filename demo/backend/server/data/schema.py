@@ -28,6 +28,9 @@ from data.data_types import (
     ClearPointsInVideoInput,
     CloseSession,
     CloseSessionInput,
+    ExportVideoAnnotationsInput,
+    ExportResult,
+    ExportJobInfo,
     RemoveObjectInput,
     RLEMask,
     RLEMaskForObject,
@@ -86,6 +89,18 @@ class Query:
         """
         all_videos = get_videos()
         return all_videos.values()
+
+    @strawberry.field
+    def export_job_status(self, job_id: str) -> Optional[ExportJobInfo]:
+        """
+        Get the status of an export job by its ID.
+        Returns None if the job doesn't exist.
+        """
+        # Import here to avoid circular dependency
+        from data.export_service import ExportService
+
+        export_service = ExportService()
+        return export_service.get_job_status(job_id)
 
 
 @strawberry.type
@@ -254,6 +269,34 @@ class Mutation:
         )
         response = inference_api.cancel_propagate_in_video(request)
         return CancelPropagateInVideo(success=response.success)
+
+    @strawberry.mutation
+    def export_video_annotations(
+        self, input: ExportVideoAnnotationsInput, info: strawberry.Info
+    ) -> ExportResult:
+        """
+        Export video annotations with frame sampling based on target FPS.
+        Returns a job ID that can be used to track export progress.
+        """
+        # Import here to avoid circular dependency
+        from data.export_service import ExportService
+
+        export_service = ExportService()
+
+        try:
+            result = export_service.create_export_job(
+                session_id=input.session_id,
+                target_fps=input.target_fps,
+                inference_api=info.context["inference_api"]
+            )
+            return result
+        except Exception as e:
+            from data.data_types import ExportJobStatus
+            return ExportResult(
+                job_id="",
+                status=ExportJobStatus.FAILED,
+                message=f"Failed to create export job: {str(e)}"
+            )
 
 
 def get_file_hash(video_path_or_file) -> str:

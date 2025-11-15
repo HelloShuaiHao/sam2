@@ -152,3 +152,48 @@ class SessionExpiration:
     expiration_time: int
     max_expiration_time: int
     ttl: int
+
+
+# Export-related types
+@strawberry.enum
+class ExportJobStatus:
+    """Status of an export job."""
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+@strawberry.input
+class ExportVideoAnnotationsInput:
+    """Input for exporting video annotations."""
+    session_id: str
+    target_fps: float
+
+
+@strawberry.type
+class ExportResult:
+    """Result of an export request."""
+    job_id: str
+    status: ExportJobStatus
+    message: Optional[str] = None
+    download_url: Optional[str] = None
+    progress: Optional[float] = None
+    estimated_frames: Optional[int] = None
+
+
+@strawberry.type
+class ExportJobInfo:
+    """Detailed information about an export job."""
+    job_id: str
+    session_id: str
+    status: ExportJobStatus
+    target_fps: float
+    total_frames: int
+    processed_frames: int
+    progress: float
+    created_at: str
+    completed_at: Optional[str] = None
+    download_url: Optional[str] = None
+    file_size_mb: Optional[float] = None
+    error_message: Optional[str] = None
