@@ -15,7 +15,7 @@
  */
 
 import FrameRateSelector, {FrameRateOption} from './FrameRateSelector';
-import {color, spacing} from '@/theme/tokens.stylex';
+import {spacing} from '@/theme/tokens.stylex';
 import stylex from '@stylexjs/stylex';
 import {useState} from 'react';
 
