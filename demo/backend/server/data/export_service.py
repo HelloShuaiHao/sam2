@@ -266,21 +266,40 @@ class ExportService:
         # The predictor stores tracked objects in the state
         obj_ids = inference_state.get("obj_id_to_idx", {}).keys()
 
+        # 🔍 DEBUG: Check what we have in inference_state
+        logger.info(f"🔍 DEBUG - Frame {frame_index}:")
+        logger.info(f"  - obj_id_to_idx keys: {list(obj_ids)}")
+        logger.info(f"  - inference_state keys: {list(inference_state.keys())}")
+        if "output_dict_per_obj" in inference_state:
+            logger.info(f"  - output_dict_per_obj length: {len(inference_state['output_dict_per_obj'])}")
+
         with inference_api.autocast_context():
             for obj_id in obj_ids:
+                logger.info(f"  Processing object_id: {obj_id}")
                 try:
                     # Get the object index
                     obj_idx = inference_state["obj_id_to_idx"][obj_id]
+                    logger.info(f"    - obj_idx: {obj_idx}")
 
                     # Access the per-object output dictionary
                     obj_output_dict = inference_state["output_dict_per_obj"][obj_idx]
+                    logger.info(f"    - cond_frame_outputs frames: {list(obj_output_dict['cond_frame_outputs'].keys())}")
+                    logger.info(f"    - non_cond_frame_outputs frames: {list(obj_output_dict['non_cond_frame_outputs'].keys())}")
 
                     # Try to get output from cond_frame_outputs first, then non_cond_frame_outputs
                     output = obj_output_dict["cond_frame_outputs"].get(frame_index)
                     if output is None:
                         output = obj_output_dict["non_cond_frame_outputs"].get(frame_index)
+                        logger.info(f"    - Using non_cond_frame_outputs for frame {frame_index}")
+                    else:
+                        logger.info(f"    - Using cond_frame_outputs for frame {frame_index}")
 
                     # If we found an output for this frame and it has masks
+                    if output is not None and output.get("pred_masks") is not None:
+                        logger.info(f"    - Found mask! Shape: {output['pred_masks'].shape}")
+                    else:
+                        logger.warning(f"    - No mask found for frame {frame_index}, output: {output is not None}")
+
                     if output is not None and output.get("pred_masks") is not None:
                         # Extract the mask (pred_masks shape is typically (1, H, W))
                         pred_masks = output["pred_masks"]
