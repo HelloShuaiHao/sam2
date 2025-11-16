@@ -66,7 +66,7 @@ const sharedStyles = stylex.create({
 type ToolbarObjectContainerProps = PropsWithChildren<{
   alignItems?: 'top' | 'center';
   isActive: boolean;
-  title: string;
+  title: ReactNode;
   subtitle: string;
   thumbnail: ReactNode;
   isMobile: boolean;

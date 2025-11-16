@@ -1,0 +1,272 @@
+{
+  "video": {
+    "filename": "session_809ac115-6bb6-441f-8a06-743ddcc54b33.mp4",
+    "width": 1280,
+    "height": 720,
+    "source_fps": 30.0,
+    "total_frames": 247,
+    "duration_sec": 8.233
+  },
+  "export_config": {
+    "target_fps": 5.0,
+    "total_exported_frames": 42,
+    "frame_indices": [
+      0,
+      6,
+      12,
+      18,
+      24,
+      30,
+      36,
+      42,
+      48,
+      54,
+      60,
+      66,
+      72,
+      78,
+      84,
+      90,
+      96,
+      102,
+      108,
+      114,
+      120,
+      126,
+      132,
+      138,
+      144,
+      150,
+      156,
+      162,
+      168,
+      174,
+      180,
+      186,
+      192,
+      198,
+      204,
+      210,
+      216,
+      222,
+      228,
+      234,
+      240,
+      246
+    ],
+    "export_timestamp": "2025-11-15T13:29:13.014885Z",
+    "exporter_version": "1.0.0"
+  },
+  "annotations": [
+    {
+      "frame_index": 0,
+      "timestamp_sec": 0.0,
+      "objects": []
+    },
+    {
+      "frame_index": 6,
+      "timestamp_sec": 0.2,
+      "objects": []
+    },
+    {
+      "frame_index": 12,
+      "timestamp_sec": 0.4,
+      "objects": []
+    },
+    {
+      "frame_index": 18,
+      "timestamp_sec": 0.6,
+      "objects": []
+    },
+    {
+      "frame_index": 24,
+      "timestamp_sec": 0.8,
+      "objects": []
+    },
+    {
+      "frame_index": 30,
+      "timestamp_sec": 1.0,
+      "objects": []
+    },
+    {
+      "frame_index": 36,
+      "timestamp_sec": 1.2,
+      "objects": []
+    },
+    {
+      "frame_index": 42,
+      "timestamp_sec": 1.4,
+      "objects": []
+    },
+    {
+      "frame_index": 48,
+      "timestamp_sec": 1.6,
+      "objects": []
+    },
+    {
+      "frame_index": 54,
+      "timestamp_sec": 1.8,
+      "objects": []
+    },
+    {
+      "frame_index": 60,
+      "timestamp_sec": 2.0,
+      "objects": []
+    },
+    {
+      "frame_index": 66,
+      "timestamp_sec": 2.2,
+      "objects": []
+    },
+    {
+      "frame_index": 72,
+      "timestamp_sec": 2.4,
+      "objects": []
+    },
+    {
+      "frame_index": 78,
+      "timestamp_sec": 2.6,
+      "objects": []
+    },
+    {
+      "frame_index": 84,
+      "timestamp_sec": 2.8,
+      "objects": []
+    },
+    {
+      "frame_index": 90,
+      "timestamp_sec": 3.0,
+      "objects": []
+    },
+    {
+      "frame_index": 96,
+      "timestamp_sec": 3.2,
+      "objects": []
+    },
+    {
+      "frame_index": 102,
+      "timestamp_sec": 3.4,
+      "objects": []
+    },
+    {
+      "frame_index": 108,
+      "timestamp_sec": 3.6,
+      "objects": []
+    },
+    {
+      "frame_index": 114,
+      "timestamp_sec": 3.8,
+      "objects": []
+    },
+    {
+      "frame_index": 120,
+      "timestamp_sec": 4.0,
+      "objects": []
+    },
+    {
+      "frame_index": 126,
+      "timestamp_sec": 4.2,
+      "objects": []
+    },
+    {
+      "frame_index": 132,
+      "timestamp_sec": 4.4,
+      "objects": []
+    },
+    {
+      "frame_index": 138,
+      "timestamp_sec": 4.6,
+      "objects": []
+    },
+    {
+      "frame_index": 144,
+      "timestamp_sec": 4.8,
+      "objects": []
+    },
+    {
+      "frame_index": 150,
+      "timestamp_sec": 5.0,
+      "objects": []
+    },
+    {
+      "frame_index": 156,
+      "timestamp_sec": 5.2,
+      "objects": []
+    },
+    {
+      "frame_index": 162,
+      "timestamp_sec": 5.4,
+      "objects": []
+    },
+    {
+      "frame_index": 168,
+      "timestamp_sec": 5.6,
+      "objects": []
+    },
+    {
+      "frame_index": 174,
+      "timestamp_sec": 5.8,
+      "objects": []
+    },
+    {
+      "frame_index": 180,
+      "timestamp_sec": 6.0,
+      "objects": []
+    },
+    {
+      "frame_index": 186,
+      "timestamp_sec": 6.2,
+      "objects": []
+    },
+    {
+      "frame_index": 192,
+      "timestamp_sec": 6.4,
+      "objects": []
+    },
+    {
+      "frame_index": 198,
+      "timestamp_sec": 6.6,
+      "objects": []
+    },
+    {
+      "frame_index": 204,
+      "timestamp_sec": 6.8,
+      "objects": []
+    },
+    {
+      "frame_index": 210,
+      "timestamp_sec": 7.0,
+      "objects": []
+    },
+    {
+      "frame_index": 216,
+      "timestamp_sec": 7.2,
+      "objects": []
+    },
+    {
+      "frame_index": 222,
+      "timestamp_sec": 7.4,
+      "objects": []
+    },
+    {
+      "frame_index": 228,
+      "timestamp_sec": 7.6,
+      "objects": []
+    },
+    {
+      "frame_index": 234,
+      "timestamp_sec": 7.8,
+      "objects": []
+    },
+    {
+      "frame_index": 240,
+      "timestamp_sec": 8.0,
+      "objects": []
+    },
+    {
+      "frame_index": 246,
+      "timestamp_sec": 8.2,
+      "objects": []
+    }
+  ]
+}
