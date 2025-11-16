@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-import {color, spacing} from '@/theme/tokens.stylex';
+import {spacing} from '@/theme/tokens.stylex';
 import stylex from '@stylexjs/stylex';
-import {useEffect, useState} from 'react';
 
 const styles = stylex.create({
   overlay: {
