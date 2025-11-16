@@ -42,6 +42,7 @@ export type Tracklet = {
   points: FramePoints[];
   masks: Mask[];
   isInitialized: boolean;
+  name?: string; // Optional custom name for the object
 };
 
 export type BaseTracklet = Omit<Tracklet, 'masks'> & {

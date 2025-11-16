@@ -27,6 +27,7 @@ import {
   isFirstClickMadeAtom,
   isTrackletObjectLimitReachedAtom,
   trackletObjectsAtom,
+  trackletNamesAtom,
 } from '@/demo/atoms';
 import {useAtomValue, useSetAtom} from 'jotai';
 
@@ -41,6 +42,7 @@ export default function ObjectsToolbar({onTabChange}: Props) {
   const isFirstClickMade = useAtomValue(isFirstClickMadeAtom);
   const isObjectLimitReached = useAtomValue(isTrackletObjectLimitReachedAtom);
   const isAddObjectEnabled = useAtomValue(isAddObjectEnabledAtom);
+  const trackletNames = useAtomValue(trackletNamesAtom);
 
   if (!isFirstClickMade) {
     return <FirstClickView />;
@@ -54,7 +56,7 @@ export default function ObjectsToolbar({onTabChange}: Props) {
           return (
             <ToolbarObject
               key={tracklet.id}
-              label={getObjectLabel(tracklet)}
+              label={getObjectLabel(tracklet, trackletNames[tracklet.id])}
               tracklet={tracklet}
               isActive={activeTracklet?.id === tracklet.id}
               onClick={() => {

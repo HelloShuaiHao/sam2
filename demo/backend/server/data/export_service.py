@@ -55,7 +55,8 @@ class ExportService:
         self,
         session_id: str,
         target_fps: float,
-        inference_api: InferenceAPI
+        inference_api: InferenceAPI,
+        object_names: Optional[Dict[str, str]] = None
     ) -> ExportResult:
         """
         Create a new export job and start processing in background.
@@ -107,7 +108,8 @@ class ExportService:
                 "download_url": None,
                 "file_size_mb": None,
                 "error_message": None,
-                "estimated_frames": estimated_frames
+                "estimated_frames": estimated_frames,
+                "object_names": object_names or {}
             }
 
             self._jobs[job_id] = job
@@ -115,7 +117,7 @@ class ExportService:
             # Start background processing
             thread = Thread(
                 target=self._process_export_job,
-                args=(job_id, inference_api, session["video_path"]),
+                args=(job_id, inference_api, session["video_path"], object_names or {}),
                 daemon=True
             )
             thread.start()
@@ -137,7 +139,7 @@ class ExportService:
             logger.error(traceback.format_exc())
             raise
 
-    def _process_export_job(self, job_id: str, inference_api: InferenceAPI, video_path: str):
+    def _process_export_job(self, job_id: str, inference_api: InferenceAPI, video_path: str, object_names: Dict[str, str]):
         """
         Process export job in background thread.
 
@@ -145,6 +147,7 @@ class ExportService:
             job_id: Job ID
             inference_api: Inference API instance
             video_path: Path to original video file
+            object_names: Mapping of object_id (as string) to custom name
         """
         job = self._jobs.get(job_id)
         if not job:
@@ -193,7 +196,8 @@ class ExportService:
                     objects = self._get_frame_annotations(
                         inference_api,
                         inference_state,
-                        frame_index
+                        frame_index,
+                        object_names
                     )
 
                     # Add to serializer
@@ -266,7 +270,8 @@ class ExportService:
         self,
         inference_api: InferenceAPI,
         inference_state: Any,
-        frame_index: int
+        frame_index: int,
+        object_names: Dict[str, str]
     ) -> list:
         """
         Get all object annotations for a specific frame.
@@ -275,6 +280,7 @@ class ExportService:
             inference_api: Inference API
             inference_state: Inference state
             frame_index: Frame index
+            object_names: Mapping of object_id (as string) to custom name
 
         Returns:
             List of object dictionaries with masks
@@ -343,9 +349,13 @@ class ExportService:
                         # Convert to binary mask
                         mask_binary = (mask > 0).astype(np.uint8)
 
+                        # Get custom name if available, otherwise use default
+                        custom_name = object_names.get(str(obj_id))
+                        label = custom_name if custom_name else f"object_{obj_id}"
+
                         objects.append({
                             "object_id": obj_id,
-                            "label": f"object_{obj_id}",
+                            "label": label,
                             "mask": mask_binary,
                             "confidence": 0.95  # Default confidence
                         })

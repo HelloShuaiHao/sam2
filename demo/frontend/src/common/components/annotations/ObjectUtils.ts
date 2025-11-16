@@ -15,6 +15,6 @@
  */
 import {BaseTracklet} from '@/common/tracker/Tracker';
 
-export function getObjectLabel(tracklet: BaseTracklet) {
-  return `Object ${tracklet.id + 1}`;
+export function getObjectLabel(tracklet: BaseTracklet, customName?: string) {
+  return customName || tracklet.name || `Object ${tracklet.id + 1}`;
 }

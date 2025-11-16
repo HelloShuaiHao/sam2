@@ -170,6 +170,7 @@ class ExportVideoAnnotationsInput:
     """Input for exporting video annotations."""
     session_id: str
     target_fps: float
+    object_names: Optional[strawberry.scalars.JSON] = None  # Map of object_id -> custom_name
 
 
 @strawberry.type
