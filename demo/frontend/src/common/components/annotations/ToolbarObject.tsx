@@ -20,8 +20,9 @@ import ToolbarObjectContainer from '@/common/components/annotations/ToolbarObjec
 import useVideo from '@/common/components/video/editor/useVideo';
 import {BaseTracklet} from '@/common/tracker/Tracker';
 import emptyFunction from '@/common/utils/emptyFunction';
-import {activeTrackletObjectIdAtom} from '@/demo/atoms';
-import {useSetAtom} from 'jotai';
+import {activeTrackletObjectIdAtom, trackletNamesAtom} from '@/demo/atoms';
+import {useSetAtom, useAtom} from 'jotai';
+import {useState} from 'react';
 
 type Props = {
   label: string;
@@ -42,6 +43,9 @@ export default function ToolbarObject({
 }: Props) {
   const video = useVideo();
   const setActiveTrackletId = useSetAtom(activeTrackletObjectIdAtom);
+  const [trackletNames, setTrackletNames] = useAtom(trackletNamesAtom);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState('');
 
   async function handleCancelNewObject() {
     try {
@@ -50,6 +54,36 @@ export default function ToolbarObject({
       reportError(error);
     } finally {
       setActiveTrackletId(null);
+    }
+  }
+
+  function handleLabelClick(e: React.MouseEvent) {
+    if (!tracklet.isInitialized) return;
+    e.stopPropagation();
+    setEditValue(label);
+    setIsEditing(true);
+  }
+
+  function handleLabelSave() {
+    if (editValue.trim()) {
+      setTrackletNames({
+        ...trackletNames,
+        [tracklet.id]: editValue.trim(),
+      });
+    } else {
+      // If empty, remove custom name
+      const newNames = {...trackletNames};
+      delete newNames[tracklet.id];
+      setTrackletNames(newNames);
+    }
+    setIsEditing(false);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter') {
+      handleLabelSave();
+    } else if (e.key === 'Escape') {
+      setIsEditing(false);
     }
   }
 
@@ -72,7 +106,28 @@ export default function ToolbarObject({
     <ToolbarObjectContainer
       isActive={isActive}
       onClick={onClick}
-      title={label}
+      title={
+        isEditing ? (
+          <input
+            type="text"
+            value={editValue}
+            onChange={e => setEditValue(e.target.value)}
+            onBlur={handleLabelSave}
+            onKeyDown={handleKeyDown}
+            autoFocus
+            className="bg-transparent border-b border-white outline-none text-white w-full"
+            onClick={e => e.stopPropagation()}
+          />
+        ) : (
+          <span
+            onClick={handleLabelClick}
+            className="cursor-pointer hover:opacity-80"
+            title="Click to edit name"
+          >
+            {label}
+          </span>
+        )
+      }
       subtitle=""
       thumbnail={
         <ObjectThumbnail

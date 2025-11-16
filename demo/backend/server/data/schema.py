@@ -287,7 +287,8 @@ class Mutation:
             result = export_service.create_export_job(
                 session_id=input.session_id,
                 target_fps=input.target_fps,
-                inference_api=info.context["inference_api"]
+                inference_api=info.context["inference_api"],
+                object_names=input.object_names
             )
             return result
         except Exception as e:

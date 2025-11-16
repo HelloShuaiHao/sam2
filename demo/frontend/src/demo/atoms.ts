@@ -96,6 +96,9 @@ export const activeTrackletObjectAtom = atom<BaseTracklet | null>(get => {
 
 export const trackletObjectsAtom = atom<BaseTracklet[]>([]);
 
+// Custom names for tracklets (tracklet ID -> custom name)
+export const trackletNamesAtom = atom<Record<number, string>>({});
+
 export const maxTrackletObjectIdAtom = atom<number>(get => {
   const tracklets = get(trackletObjectsAtom);
   return tracklets.reduce((prev, curr) => Math.max(prev, curr.id), 0);

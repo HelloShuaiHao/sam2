@@ -18,6 +18,8 @@ import {useState, useCallback, useEffect, useRef} from 'react';
 import useSettingsContext from '@/settings/useSettingsContext';
 import type {ExportStatus} from './ExportProgress';
 import {FrameRateOption} from './FrameRateSelector';
+import {useAtomValue} from 'jotai';
+import {trackletNamesAtom} from '@/demo/atoms';
 
 type ExportState = {
   isExporting: boolean;
@@ -47,6 +49,7 @@ export default function useExport(sessionId: string | null) {
   const {settings} = useSettingsContext();
   const [exportState, setExportState] = useState<ExportState>(INITIAL_STATE);
   const pollingIntervalRef = useRef<number | null>(null);
+  const trackletNames = useAtomValue(trackletNamesAtom);
 
   const startExport = useCallback(async (targetFps: FrameRateOption) => {
     if (!sessionId) {
@@ -85,6 +88,7 @@ export default function useExport(sessionId: string | null) {
             input: {
               sessionId,
               targetFps,
+              objectNames: trackletNames,
             },
           },
         }),
@@ -121,7 +125,7 @@ export default function useExport(sessionId: string | null) {
         errorMessage: error instanceof Error ? error.message : 'Unknown error',
       }));
     }
-  }, [sessionId, settings.inferenceAPIEndpoint]);
+  }, [sessionId, settings.inferenceAPIEndpoint, trackletNames]);
 
   const startPolling = useCallback((jobId: string) => {
     // Clear any existing polling
