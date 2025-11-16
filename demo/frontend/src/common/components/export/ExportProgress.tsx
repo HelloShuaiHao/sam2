@@ -19,101 +19,133 @@ import stylex from '@stylexjs/stylex';
 import {useEffect, useState} from 'react';
 
 const styles = stylex.create({
-  container: {
+  overlay: {
     position: 'fixed',
-    bottom: spacing[4],
-    right: spacing[4],
-    background: color['gray-900'],
-    border: `1px solid ${color['gray-700']}`,
-    borderRadius: 12,
-    padding: spacing[4],
-    minWidth: 320,
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-    zIndex: 999,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(0, 0, 0, 0.6)',
+    backdropFilter: 'blur(8px)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  container: {
+    background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
+    borderRadius: 16,
+    padding: spacing[6],
+    minWidth: 420,
+    maxWidth: 500,
+    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3), 0 0 1px rgba(255, 255, 255, 0.5) inset',
   },
   header: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing[3],
+    marginBottom: spacing[4],
   },
   title: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: 600,
-    color: color['gray-100'],
+    color: '#2d3748',
+    letterSpacing: '-0.5px',
   },
   closeButton: {
-    background: 'none',
+    background: 'rgba(0, 0, 0, 0.05)',
     border: 'none',
-    color: color['gray-400'],
+    color: '#718096',
     cursor: 'pointer',
-    fontSize: 18,
-    padding: 0,
+    fontSize: 20,
+    width: 28,
+    height: 28,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.2s ease',
     ':hover': {
-      color: color['gray-100'],
+      background: 'rgba(0, 0, 0, 0.1)',
+      color: '#2d3748',
     },
   },
   progressBar: {
     width: '100%',
-    height: 8,
-    background: color['gray-700'],
-    borderRadius: 4,
+    height: 10,
+    background: 'rgba(0, 0, 0, 0.08)',
+    borderRadius: 8,
     overflow: 'hidden',
-    marginBottom: spacing[2],
+    marginBottom: spacing[3],
+    boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)',
   },
   progressFill: {
     height: '100%',
-    background: color['blue-500'],
+    background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
     transition: 'width 0.3s ease',
-    borderRadius: 4,
+    borderRadius: 8,
+    boxShadow: '0 2px 8px rgba(102, 126, 234, 0.4)',
   },
   status: {
-    fontSize: 12,
-    color: color['gray-400'],
+    fontSize: 13,
+    color: '#718096',
     marginBottom: spacing[1],
+    fontWeight: 500,
   },
   percentage: {
-    fontSize: 18,
-    fontWeight: 600,
-    color: color['gray-100'],
+    fontSize: 24,
+    fontWeight: 700,
+    color: '#2d3748',
     marginBottom: spacing[2],
+    letterSpacing: '-1px',
   },
   successMessage: {
-    fontSize: 14,
-    color: color['green-500'],
-    marginBottom: spacing[2],
+    fontSize: 15,
+    color: '#38a169',
+    marginBottom: spacing[3],
+    fontWeight: 600,
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
   },
   errorMessage: {
-    fontSize: 14,
-    color: color['red-500'],
-    marginBottom: spacing[2],
+    fontSize: 15,
+    color: '#e53e3e',
+    marginBottom: spacing[3],
+    fontWeight: 600,
   },
   downloadButton: {
     width: '100%',
-    padding: `${spacing[2]}px ${spacing[3]}px`,
-    background: color['blue-600'],
+    padding: `${spacing[3]}px ${spacing[4]}px`,
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     color: 'white',
     border: 'none',
-    borderRadius: 6,
-    fontSize: 14,
-    fontWeight: 500,
+    borderRadius: 10,
+    fontSize: 15,
+    fontWeight: 600,
     cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
     ':hover': {
-      background: color['blue-500'],
+      transform: 'translateY(-2px)',
+      boxShadow: '0 6px 16px rgba(102, 126, 234, 0.4)',
     },
   },
   retryButton: {
     width: '100%',
-    padding: `${spacing[2]}px ${spacing[3]}px`,
-    background: color['gray-700'],
-    color: color['gray-100'],
-    border: 'none',
-    borderRadius: 6,
-    fontSize: 14,
-    fontWeight: 500,
+    padding: `${spacing[3]}px ${spacing[4]}px`,
+    background: 'rgba(0, 0, 0, 0.05)',
+    color: '#4a5568',
+    border: '1px solid rgba(0, 0, 0, 0.1)',
+    borderRadius: 10,
+    fontSize: 15,
+    fontWeight: 600,
     cursor: 'pointer',
+    transition: 'all 0.2s ease',
     ':hover': {
-      background: color['gray-600'],
+      background: 'rgba(0, 0, 0, 0.08)',
+      borderColor: 'rgba(0, 0, 0, 0.15)',
     },
   },
 });
@@ -147,23 +179,7 @@ export default function ExportProgress({
   onDownload,
   onRetry,
 }: Props) {
-  const [autoHideTimer, setAutoHideTimer] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (status === 'completed' && autoHideTimer === null) {
-      // Auto-hide after 3 seconds on completion
-      const timer = window.setTimeout(() => {
-        onClose();
-      }, 3000);
-      setAutoHideTimer(timer);
-    }
-
-    return () => {
-      if (autoHideTimer !== null) {
-        window.clearTimeout(autoHideTimer);
-      }
-    };
-  }, [status, autoHideTimer, onClose]);
+  // Removed auto-hide functionality - user must manually close
 
   if (!isVisible) {
     return null;
@@ -189,59 +205,67 @@ export default function ExportProgress({
   };
 
   return (
-    <div {...stylex.props(styles.container)}>
-      <div {...stylex.props(styles.header)}>
-        <h3 {...stylex.props(styles.title)}>Exporting Annotations</h3>
-        <button
-          {...stylex.props(styles.closeButton)}
-          onClick={onClose}
-          aria-label="Close"
-        >
-          ×
-        </button>
-      </div>
+    <div {...stylex.props(styles.overlay)} onClick={onClose}>
+      <div
+        {...stylex.props(styles.container)}
+        onClick={e => e.stopPropagation()}
+      >
+        <div {...stylex.props(styles.header)}>
+          <h3 {...stylex.props(styles.title)}>Exporting Annotations</h3>
+          <button
+            {...stylex.props(styles.closeButton)}
+            onClick={onClose}
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
 
-      {status === 'processing' || status === 'pending' ? (
-        <>
-          <div {...stylex.props(styles.progressBar)}>
-            <div
-              {...stylex.props(styles.progressFill)}
-              style={{width: `${percentage}%`}}
-            />
-          </div>
-          <p {...stylex.props(styles.percentage)}>{percentage}%</p>
-          <p {...stylex.props(styles.status)}>{getStatusText()}</p>
-        </>
-      ) : status === 'completed' ? (
-        <>
-          <p {...stylex.props(styles.successMessage)}>
-            ✓ {getStatusText()}
-            {fileSizeMb && ` (${fileSizeMb.toFixed(2)} MB)`}
-          </p>
-          {downloadUrl && onDownload && (
-            <button
-              {...stylex.props(styles.downloadButton)}
-              onClick={onDownload}
-            >
-              Download Export
-            </button>
-          )}
-        </>
-      ) : status === 'failed' ? (
-        <>
-          <p {...stylex.props(styles.errorMessage)}>
-            ✗ {errorMessage || 'An error occurred during export'}
-          </p>
-          {onRetry && (
-            <button
-              {...stylex.props(styles.retryButton)}
-              onClick={onRetry}
-            >
-              Retry Export
-            </button>
-          )}
-        </>
-      ) : null}
+        {status === 'processing' || status === 'pending' ? (
+          <>
+            <div {...stylex.props(styles.progressBar)}>
+              <div
+                {...stylex.props(styles.progressFill)}
+                style={{width: `${percentage}%`}}
+              />
+            </div>
+            <p {...stylex.props(styles.percentage)}>{percentage}%</p>
+            <p {...stylex.props(styles.status)}>{getStatusText()}</p>
+          </>
+        ) : status === 'completed' ? (
+          <>
+            <p {...stylex.props(styles.successMessage)}>
+              <span>✓</span>
+              <span>
+                {getStatusText()}
+                {fileSizeMb && ` (${fileSizeMb.toFixed(2)} MB)`}
+              </span>
+            </p>
+            {downloadUrl && onDownload && (
+              <button
+                {...stylex.props(styles.downloadButton)}
+                onClick={onDownload}
+              >
+                Download Export
+              </button>
+            )}
+          </>
+        ) : status === 'failed' ? (
+          <>
+            <p {...stylex.props(styles.errorMessage)}>
+              ✗ {errorMessage || 'An error occurred during export'}
+            </p>
+            {onRetry && (
+              <button
+                {...stylex.props(styles.retryButton)}
+                onClick={onRetry}
+              >
+                Retry Export
+              </button>
+            )}
+          </>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -140,7 +140,7 @@ class AnnotationSerializer:
             JSON string
         """
         data = self.serialize(target_fps, frame_indices)
-        return json.dumps(data, indent=indent)
+        return json.dumps(data, indent=indent, ensure_ascii=False)
 
     def to_json_file(
         self,
@@ -160,8 +160,8 @@ class AnnotationSerializer:
         """
         data = self.serialize(target_fps, frame_indices)
 
-        with open(filepath, 'w') as f:
-            json.dump(data, f, indent=indent)
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=indent, ensure_ascii=False)
 
         logger.info(f"Saved annotations to {filepath}")
 
