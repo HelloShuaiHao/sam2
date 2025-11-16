@@ -269,33 +269,51 @@ class ExportService:
         with inference_api.autocast_context():
             for obj_id in obj_ids:
                 try:
-                    # Get mask for this object at this frame
-                    # We need to access the output frames from the predictor
-                    output_dict = inference_state.get("output_dict", {})
+                    # Get the object index
+                    obj_idx = inference_state["obj_id_to_idx"][obj_id]
 
-                    if frame_index in output_dict:
-                        frame_output = output_dict[frame_index]
+                    # Access the per-object output dictionary
+                    obj_output_dict = inference_state["output_dict_per_obj"][obj_idx]
 
-                        # Check if this object has a mask in this frame
-                        if obj_id in frame_output.get("obj_ids", []):
-                            obj_idx = list(frame_output["obj_ids"]).index(obj_id)
-                            mask = frame_output["pred_masks"][obj_idx, 0].cpu().numpy()
+                    # Try to get output from cond_frame_outputs first, then non_cond_frame_outputs
+                    output = obj_output_dict["cond_frame_outputs"].get(frame_index)
+                    if output is None:
+                        output = obj_output_dict["non_cond_frame_outputs"].get(frame_index)
 
-                            # Convert to binary mask
-                            mask_binary = (mask > 0).astype(np.uint8)
+                    # If we found an output for this frame and it has masks
+                    if output is not None and output.get("pred_masks") is not None:
+                        # Extract the mask (pred_masks shape is typically (1, H, W))
+                        pred_masks = output["pred_masks"]
 
-                            objects.append({
-                                "object_id": obj_id,
-                                "label": f"object_{obj_id}",
-                                "mask": mask_binary,
-                                "confidence": 0.95  # Default confidence
-                            })
+                        # Handle different tensor shapes
+                        if pred_masks.dim() == 3:
+                            mask = pred_masks[0].cpu().numpy()
+                        elif pred_masks.dim() == 2:
+                            mask = pred_masks.cpu().numpy()
+                        else:
+                            logger.warning(
+                                f"Unexpected mask shape for object {obj_id} "
+                                f"at frame {frame_index}: {pred_masks.shape}"
+                            )
+                            continue
+
+                        # Convert to binary mask
+                        mask_binary = (mask > 0).astype(np.uint8)
+
+                        objects.append({
+                            "object_id": obj_id,
+                            "label": f"object_{obj_id}",
+                            "mask": mask_binary,
+                            "confidence": 0.95  # Default confidence
+                        })
 
                 except Exception as e:
                     logger.warning(
                         f"Could not get mask for object {obj_id} "
                         f"at frame {frame_index}: {e}"
                     )
+                    import traceback
+                    logger.debug(traceback.format_exc())
 
         return objects
 
