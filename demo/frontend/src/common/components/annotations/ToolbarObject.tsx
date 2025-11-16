@@ -121,8 +121,11 @@ export default function ToolbarObject({
         ) : (
           <span
             onClick={handleLabelClick}
-            className="cursor-pointer hover:opacity-80"
+            className="inline-block px-3 py-1.5 rounded-full cursor-pointer transition-all duration-200 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border border-gray-300 shadow-sm hover:shadow-md hover:from-gray-200 hover:to-gray-300 hover:scale-105 font-medium text-sm"
             title="Click to edit name"
+            style={{
+              backdropFilter: 'blur(4px)',
+            }}
           >
             {label}
           </span>
