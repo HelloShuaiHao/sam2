@@ -21,6 +21,9 @@ from threading import Thread
 import traceback
 
 import numpy as np
+import cv2
+import torch
+from PIL import Image
 from pycocotools.mask import decode as decode_rle_mask
 
 from app_conf import DATA_PATH, API_URL
@@ -179,6 +182,9 @@ class ExportService:
 
             serializer = AnnotationSerializer(video_metadata)
 
+            # Store visualized frames
+            visualized_frames = {}
+
             # Process each sampled frame
             for idx, frame_index in enumerate(frame_indices):
                 try:
@@ -196,6 +202,17 @@ class ExportService:
                         timestamp_sec=timestamp_sec,
                         objects=objects
                     )
+
+                    # Generate visualization with masks
+                    if len(objects) > 0:  # Only visualize if there are objects
+                        vis_image = self._visualize_frame_with_masks(
+                            inference_state=inference_state,
+                            frame_index=frame_index,
+                            objects=objects,
+                            video_width=video_metadata["width"],
+                            video_height=video_metadata["height"]
+                        )
+                        visualized_frames[frame_index] = vis_image
 
                     # Update progress
                     job["processed_frames"] = idx + 1
@@ -216,7 +233,8 @@ class ExportService:
                 job_id,
                 serializer,
                 job["target_fps"],
-                frame_indices
+                frame_indices,
+                visualized_frames
             )
 
             # Calculate file size
@@ -341,21 +359,152 @@ class ExportService:
 
         return objects
 
+    def _visualize_frame_with_masks(
+        self,
+        inference_state: Dict[str, Any],
+        frame_index: int,
+        objects: list,
+        video_width: int,
+        video_height: int
+    ) -> np.ndarray:
+        """
+        Create visualization of frame with mask overlays.
+
+        Args:
+            inference_state: SAM2 inference state
+            frame_index: Frame index
+            objects: List of objects with masks (from _get_objects_for_frame)
+            video_width: Original video width
+            video_height: Original video height
+
+        Returns:
+            RGB image array (H, W, 3) with mask overlays
+        """
+        # Get frame from inference_state
+        # images are stored as tensors in inference_state["images"]
+        frame_tensor = inference_state["images"][frame_index]
+
+        # Convert tensor to numpy array
+        # SAM2 stores images as (C, H, W) in [0, 1] range
+        if isinstance(frame_tensor, torch.Tensor):
+            frame_np = frame_tensor.cpu().numpy()
+        else:
+            frame_np = frame_tensor
+
+        # Convert from (C, H, W) to (H, W, C)
+        if frame_np.shape[0] == 3:
+            frame_np = np.transpose(frame_np, (1, 2, 0))
+
+        # Convert from [0, 1] to [0, 255]
+        if frame_np.max() <= 1.0:
+            frame_np = (frame_np * 255).astype(np.uint8)
+
+        # Resize to original video dimensions
+        if frame_np.shape[0] != video_height or frame_np.shape[1] != video_width:
+            frame_np = cv2.resize(frame_np, (video_width, video_height))
+
+        # Convert to BGR for OpenCV (if needed)
+        if len(frame_np.shape) == 2:
+            frame_bgr = cv2.cvtColor(frame_np, cv2.COLOR_GRAY2BGR)
+        else:
+            frame_bgr = cv2.cvtColor(frame_np, cv2.COLOR_RGB2BGR)
+
+        # Define colors for different objects (BGR format for OpenCV)
+        colors = [
+            (0, 255, 0),      # Green
+            (255, 0, 0),      # Blue
+            (0, 0, 255),      # Red
+            (255, 255, 0),    # Cyan
+            (255, 0, 255),    # Magenta
+            (0, 255, 255),    # Yellow
+            (128, 255, 0),    # Light green
+            (255, 128, 0),    # Orange
+        ]
+
+        # Create overlay
+        overlay = frame_bgr.copy()
+
+        for idx, obj in enumerate(objects):
+            mask = obj["mask"]
+
+            # Resize mask to original video dimensions if needed
+            if mask.shape[0] != video_height or mask.shape[1] != video_width:
+                mask = cv2.resize(
+                    mask.astype(np.uint8),
+                    (video_width, video_height),
+                    interpolation=cv2.INTER_NEAREST
+                )
+
+            # Get color for this object
+            color = colors[idx % len(colors)]
+
+            # Create colored mask
+            colored_mask = np.zeros_like(frame_bgr)
+            colored_mask[mask > 0] = color
+
+            # Blend with overlay (30% opacity)
+            overlay = cv2.addWeighted(overlay, 1.0, colored_mask, 0.3, 0)
+
+            # Draw contours
+            contours, _ = cv2.findContours(
+                mask.astype(np.uint8),
+                cv2.RETR_EXTERNAL,
+                cv2.CHAIN_APPROX_SIMPLE
+            )
+            cv2.drawContours(overlay, contours, -1, color, 2)
+
+            # Add label
+            label = obj.get("label", f"object_{obj['object_id']}")
+            # Find top-left point of mask for label placement
+            y_indices, x_indices = np.where(mask > 0)
+            if len(y_indices) > 0:
+                label_x = int(x_indices.min())
+                label_y = int(y_indices.min()) - 10
+                label_y = max(20, label_y)  # Ensure label is visible
+
+                # Add background rectangle for text
+                (text_w, text_h), _ = cv2.getTextSize(
+                    label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2
+                )
+                cv2.rectangle(
+                    overlay,
+                    (label_x, label_y - text_h - 5),
+                    (label_x + text_w, label_y + 5),
+                    (0, 0, 0),
+                    -1
+                )
+                cv2.putText(
+                    overlay,
+                    label,
+                    (label_x, label_y),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    (255, 255, 255),
+                    2
+                )
+
+        # Convert back to RGB
+        result_rgb = cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB)
+
+        return result_rgb
+
     def _generate_export_files(
         self,
         job_id: str,
         serializer: AnnotationSerializer,
         target_fps: float,
-        frame_indices: list
+        frame_indices: list,
+        visualized_frames: Dict[int, np.ndarray]
     ) -> Path:
         """
-        Generate export ZIP file with annotations and metadata.
+        Generate export ZIP file with annotations, metadata, and visualized images.
 
         Args:
             job_id: Job ID
             serializer: Annotation serializer
             target_fps: Target FPS
             frame_indices: List of exported frame indices
+            visualized_frames: Dict mapping frame_index to RGB image array
 
         Returns:
             Path to generated ZIP file
@@ -363,6 +512,10 @@ class ExportService:
         # Create job-specific directory
         job_dir = self.EXPORT_DIR / job_id
         job_dir.mkdir(exist_ok=True)
+
+        # Create images subdirectory
+        images_dir = job_dir / "images"
+        images_dir.mkdir(exist_ok=True)
 
         # Save annotations JSON
         annotations_path = job_dir / "annotations.json"
@@ -384,12 +537,30 @@ class ExportService:
         with open(metadata_path, 'w') as f:
             json.dump(metadata, f, indent=2)
 
+        # Save visualized images
+        image_paths = []
+        for frame_idx, vis_image in visualized_frames.items():
+            # Save as PNG
+            image_filename = f"frame_{frame_idx:06d}.png"
+            image_path = images_dir / image_filename
+
+            # Convert RGB to PIL Image and save
+            pil_image = Image.fromarray(vis_image)
+            pil_image.save(image_path, format='PNG')
+            image_paths.append((image_path, f"images/{image_filename}"))
+
+        logger.info(f"Saved {len(image_paths)} visualized frames")
+
         # Create ZIP archive
         zip_path = self.EXPORT_DIR / f"{job_id}.zip"
 
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
             zipf.write(annotations_path, "annotations.json")
             zipf.write(metadata_path, "metadata.json")
+
+            # Add all visualized images
+            for image_path, archive_name in image_paths:
+                zipf.write(image_path, archive_name)
 
         logger.info(f"Generated export archive: {zip_path}")
 
