@@ -115,7 +115,7 @@ class ExportService:
             # Start background processing
             thread = Thread(
                 target=self._process_export_job,
-                args=(job_id, inference_api),
+                args=(job_id, inference_api, session["video_path"]),
                 daemon=True
             )
             thread.start()
@@ -137,13 +137,14 @@ class ExportService:
             logger.error(traceback.format_exc())
             raise
 
-    def _process_export_job(self, job_id: str, inference_api: InferenceAPI):
+    def _process_export_job(self, job_id: str, inference_api: InferenceAPI, video_path: str):
         """
         Process export job in background thread.
 
         Args:
             job_id: Job ID
             inference_api: Inference API instance
+            video_path: Path to original video file
         """
         job = self._jobs.get(job_id)
         if not job:
@@ -206,7 +207,7 @@ class ExportService:
                     # Generate visualization with masks
                     if len(objects) > 0:  # Only visualize if there are objects
                         vis_image = self._visualize_frame_with_masks(
-                            inference_state=inference_state,
+                            video_path=video_path,
                             frame_index=frame_index,
                             objects=objects,
                             video_width=video_metadata["width"],
@@ -361,7 +362,7 @@ class ExportService:
 
     def _visualize_frame_with_masks(
         self,
-        inference_state: Dict[str, Any],
+        video_path: str,
         frame_index: int,
         objects: list,
         video_width: int,
@@ -371,7 +372,7 @@ class ExportService:
         Create visualization of frame with mask overlays.
 
         Args:
-            inference_state: SAM2 inference state
+            video_path: Path to video file
             frame_index: Frame index
             objects: List of objects with masks (from _get_objects_for_frame)
             video_width: Original video width
@@ -380,34 +381,24 @@ class ExportService:
         Returns:
             RGB image array (H, W, 3) with mask overlays
         """
-        # Get frame from inference_state
-        # images are stored as tensors in inference_state["images"]
-        frame_tensor = inference_state["images"][frame_index]
+        # Open video file
+        cap = cv2.VideoCapture(video_path)
 
-        # Convert tensor to numpy array
-        # SAM2 stores images as (C, H, W) in [0, 1] range
-        if isinstance(frame_tensor, torch.Tensor):
-            frame_np = frame_tensor.cpu().numpy()
-        else:
-            frame_np = frame_tensor
+        # Seek to the desired frame
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
 
-        # Convert from (C, H, W) to (H, W, C)
-        if frame_np.shape[0] == 3:
-            frame_np = np.transpose(frame_np, (1, 2, 0))
+        # Read the frame
+        ret, frame_bgr = cap.read()
+        cap.release()
 
-        # Convert from [0, 1] to [0, 255]
-        if frame_np.max() <= 1.0:
-            frame_np = (frame_np * 255).astype(np.uint8)
+        if not ret:
+            logger.warning(f"Could not read frame {frame_index} from {video_path}")
+            # Return a blank frame
+            return np.zeros((video_height, video_width, 3), dtype=np.uint8)
 
-        # Resize to original video dimensions
-        if frame_np.shape[0] != video_height or frame_np.shape[1] != video_width:
-            frame_np = cv2.resize(frame_np, (video_width, video_height))
-
-        # Convert to BGR for OpenCV (if needed)
-        if len(frame_np.shape) == 2:
-            frame_bgr = cv2.cvtColor(frame_np, cv2.COLOR_GRAY2BGR)
-        else:
-            frame_bgr = cv2.cvtColor(frame_np, cv2.COLOR_RGB2BGR)
+        # Resize to target dimensions if needed
+        if frame_bgr.shape[0] != video_height or frame_bgr.shape[1] != video_width:
+            frame_bgr = cv2.resize(frame_bgr, (video_width, video_height))
 
         # Define colors for different objects (BGR format for OpenCV)
         colors = [
