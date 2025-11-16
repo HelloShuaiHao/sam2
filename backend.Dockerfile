@@ -23,7 +23,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libswscale-dev \
     pkg-config \
     build-essential \
-    libffi-dev
+    libffi-dev \
+    fonts-noto-cjk \
+    fontconfig && \
+    fc-cache -fv
 
 COPY setup.py .
 COPY README.md .

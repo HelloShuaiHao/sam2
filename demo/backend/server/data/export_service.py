@@ -19,11 +19,12 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 from threading import Thread
 import traceback
+import glob
 
 import numpy as np
 import cv2
 import torch
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from pycocotools.mask import decode as decode_rle_mask
 
 from app_conf import DATA_PATH, API_URL
@@ -454,7 +455,7 @@ class ExportService:
             )
             cv2.drawContours(overlay, contours, -1, color, 2)
 
-            # Add label
+            # Add label with Chinese support using PIL
             label = obj.get("label", f"object_{obj['object_id']}")
             # Find top-left point of mask for label placement
             y_indices, x_indices = np.where(mask > 0)
@@ -463,26 +464,66 @@ class ExportService:
                 label_y = int(y_indices.min()) - 10
                 label_y = max(20, label_y)  # Ensure label is visible
 
-                # Add background rectangle for text
-                (text_w, text_h), _ = cv2.getTextSize(
-                    label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2
+                # Convert BGR to RGB for PIL
+                overlay_rgb = cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB)
+                pil_image = Image.fromarray(overlay_rgb)
+                draw = ImageDraw.Draw(pil_image)
+
+                # Try to load a Chinese-compatible font
+                font_size = 20
+                try:
+                    # Try to find Noto CJK fonts using glob
+                    font_patterns = [
+                        "/usr/share/fonts/**/NotoSansCJK*.ttc",
+                        "/usr/share/fonts/**/NotoSansCJK*.ttf",
+                        "/usr/share/fonts/**/noto-cjk/NotoSansCJK*.ttc",
+                        "/System/Library/Fonts/PingFang.ttc",
+                        "/usr/share/fonts/**/DroidSansFallback*.ttf",
+                        "C:\\Windows\\Fonts\\msyh.ttc",
+                    ]
+
+                    font = None
+                    for pattern in font_patterns:
+                        matches = glob.glob(pattern, recursive=True)
+                        for font_path in matches:
+                            try:
+                                font = ImageFont.truetype(font_path, font_size)
+                                logger.info(f"Successfully loaded font: {font_path}")
+                                break
+                            except Exception as e:
+                                logger.debug(f"Failed to load font {font_path}: {e}")
+                                continue
+                        if font is not None:
+                            break
+
+                    if font is None:
+                        # Use default font as fallback
+                        logger.warning("No TrueType font found, using default font (Chinese may not display)")
+                        font = ImageFont.load_default()
+                except Exception as e:
+                    logger.warning(f"Error loading font: {e}")
+                    font = ImageFont.load_default()
+
+                # Get text bounding box
+                bbox = draw.textbbox((label_x, label_y), label, font=font)
+                text_w = bbox[2] - bbox[0]
+                text_h = bbox[3] - bbox[1]
+
+                # Convert BGR color to RGB for PIL
+                bg_color = (0, 0, 0)  # Black background
+                text_color = (255, 255, 255)  # White text
+
+                # Draw background rectangle
+                draw.rectangle(
+                    [label_x - 2, label_y - text_h - 5, label_x + text_w + 2, label_y + 5],
+                    fill=bg_color
                 )
-                cv2.rectangle(
-                    overlay,
-                    (label_x, label_y - text_h - 5),
-                    (label_x + text_w, label_y + 5),
-                    (0, 0, 0),
-                    -1
-                )
-                cv2.putText(
-                    overlay,
-                    label,
-                    (label_x, label_y),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6,
-                    (255, 255, 255),
-                    2
-                )
+
+                # Draw text
+                draw.text((label_x, label_y - text_h - 2), label, font=font, fill=text_color)
+
+                # Convert back to BGR for OpenCV
+                overlay = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
 
         # Convert back to RGB
         result_rgb = cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB)
