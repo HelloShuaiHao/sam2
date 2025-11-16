@@ -199,3 +199,17 @@ class ExportJobInfo:
     download_url: Optional[str] = None
     file_size_mb: Optional[float] = None
     error_message: Optional[str] = None
+
+
+@strawberry.input
+class DeleteExportInput:
+    """Input for deleting an export."""
+    job_id: str
+
+
+@strawberry.type
+class DeleteExportResult:
+    """Result of a delete export request."""
+    success: bool
+    message: Optional[str] = None
+

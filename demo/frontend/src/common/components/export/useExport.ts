@@ -211,12 +211,52 @@ export default function useExport(sessionId: string | null) {
     }, 1000);
   }, [settings.inferenceAPIEndpoint]);
 
-  const downloadExport = useCallback(() => {
-    if (exportState.downloadUrl) {
+  const downloadExport = useCallback(async () => {
+    if (exportState.downloadUrl && exportState.jobId) {
       // Trigger download
       window.location.href = exportState.downloadUrl;
+
+      // Wait a bit to ensure download starts, then delete the export file
+      setTimeout(async () => {
+        try {
+          const graphqlUrl = `${settings.inferenceAPIEndpoint}/graphql`;
+          const response = await fetch(graphqlUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              query: `
+                mutation DeleteExport($input: DeleteExportInput!) {
+                  deleteExport(input: $input) {
+                    success
+                    message
+                  }
+                }
+              `,
+              variables: {
+                input: {
+                  jobId: exportState.jobId,
+                },
+              },
+            }),
+          });
+
+          const data = await response.json();
+
+          if (data.errors) {
+            console.error('Failed to delete export:', data.errors);
+          } else if (data.data?.deleteExport?.success) {
+            console.log('Export file deleted successfully');
+          } else {
+            console.warn('Export deletion failed:', data.data?.deleteExport?.message);
+          }
+        } catch (error) {
+          console.error('Error deleting export:', error);
+        }
+      }, 2000); // Wait 2 seconds for download to start
     }
-  }, [exportState.downloadUrl]);
+  }, [exportState.downloadUrl, exportState.jobId, settings.inferenceAPIEndpoint]);
 
   const resetExport = useCallback(() => {
     if (pollingIntervalRef.current) {

@@ -675,3 +675,36 @@ class ExportService:
                     logger.info(f"Cleaned up old export: {export_file}")
                 except Exception as e:
                     logger.error(f"Failed to clean up {export_file}: {e}")
+
+    def delete_export(self, job_id: str) -> bool:
+        """
+        Delete an export file and its associated temporary files.
+
+        Args:
+            job_id: Job ID
+
+        Returns:
+            True if deletion was successful, False otherwise
+        """
+        try:
+            # Delete the ZIP file
+            zip_path = self.EXPORT_DIR / f"{job_id}.zip"
+            if zip_path.exists():
+                zip_path.unlink()
+                logger.info(f"Deleted export ZIP: {zip_path}")
+
+            # Delete the job directory with temporary files
+            job_dir = self.EXPORT_DIR / job_id
+            if job_dir.exists() and job_dir.is_dir():
+                shutil.rmtree(job_dir)
+                logger.info(f"Deleted export directory: {job_dir}")
+
+            # Remove job from memory
+            if job_id in self._jobs:
+                del self._jobs[job_id]
+                logger.info(f"Removed job {job_id} from memory")
+
+            return True
+        except Exception as e:
+            logger.error(f"Failed to delete export {job_id}: {e}")
+            return False
