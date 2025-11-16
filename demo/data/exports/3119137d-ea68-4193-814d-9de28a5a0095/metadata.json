@@ -1,0 +1,43 @@
+{
+  "export_info": {
+    "created_at": "2025-11-16T06:09:03.158850Z",
+    "format_version": "1.0",
+    "exporter": "SAM2 Demo Export Tool"
+  },
+  "video": {
+    "filename": "session_ea3b9c51-fcfb-4a0b-bf91-80760b02a7bb.mp4",
+    "width": 1280,
+    "height": 720,
+    "fps": 30.0,
+    "total_frames": 247,
+    "duration_sec": 8.233333333333333
+  },
+  "export_config": {
+    "target_fps": 2.0,
+    "frame_indices": [
+      0,
+      15,
+      30,
+      45,
+      60,
+      75,
+      90,
+      105,
+      120,
+      135,
+      150,
+      165,
+      180,
+      195,
+      210,
+      225,
+      240
+    ]
+  },
+  "statistics": {
+    "total_frames": 17,
+    "total_objects": 0,
+    "unique_objects": 0,
+    "objects_per_frame": 0.0
+  }
+}
