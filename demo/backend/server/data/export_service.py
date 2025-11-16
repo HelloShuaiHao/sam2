@@ -301,13 +301,18 @@ class ExportService:
                         logger.warning(f"    - No mask found for frame {frame_index}, output: {output is not None}")
 
                     if output is not None and output.get("pred_masks") is not None:
-                        # Extract the mask (pred_masks shape is typically (1, H, W))
+                        # Extract the mask (pred_masks shape can be 2D, 3D, or 4D)
                         pred_masks = output["pred_masks"]
 
                         # Handle different tensor shapes
-                        if pred_masks.dim() == 3:
+                        if pred_masks.dim() == 4:
+                            # Shape: [batch, num_masks, H, W] -> take [0, 0] to get [H, W]
+                            mask = pred_masks[0, 0].cpu().numpy()
+                        elif pred_masks.dim() == 3:
+                            # Shape: [num_masks, H, W] -> take [0] to get [H, W]
                             mask = pred_masks[0].cpu().numpy()
                         elif pred_masks.dim() == 2:
+                            # Shape: [H, W] -> use directly
                             mask = pred_masks.cpu().numpy()
                         else:
                             logger.warning(
