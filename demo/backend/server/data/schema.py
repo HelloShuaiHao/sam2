@@ -31,6 +31,8 @@ from data.data_types import (
     ExportVideoAnnotationsInput,
     ExportResult,
     ExportJobInfo,
+    DeleteExportInput,
+    DeleteExportResult,
     RemoveObjectInput,
     RLEMask,
     RLEMaskForObject,
@@ -297,6 +299,37 @@ class Mutation:
                 job_id="",
                 status=ExportJobStatus.FAILED,
                 message=f"Failed to create export job: {str(e)}"
+            )
+
+    @strawberry.mutation
+    def delete_export(
+        self, input: DeleteExportInput
+    ) -> DeleteExportResult:
+        """
+        Delete an export file and its associated temporary files.
+        This should be called after downloading to free up disk space.
+        """
+        # Import here to avoid circular dependency
+        from data.export_service import ExportService
+
+        export_service = ExportService()
+
+        try:
+            success = export_service.delete_export(input.job_id)
+            if success:
+                return DeleteExportResult(
+                    success=True,
+                    message="Export deleted successfully"
+                )
+            else:
+                return DeleteExportResult(
+                    success=False,
+                    message="Failed to delete export"
+                )
+        except Exception as e:
+            return DeleteExportResult(
+                success=False,
+                message=f"Error deleting export: {str(e)}"
             )
 
 

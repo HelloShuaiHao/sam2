@@ -18,6 +18,7 @@ import FrameRateSelector, {FrameRateOption} from './FrameRateSelector';
 import {spacing} from '@/theme/tokens.stylex';
 import stylex from '@stylexjs/stylex';
 import {useState} from 'react';
+import {Close, CheckmarkFilled} from '@carbon/icons-react';
 
 const styles = stylex.create({
   overlay: {
@@ -96,22 +97,26 @@ const styles = stylex.create({
     paddingTop: spacing[4],
     borderTop: '1px solid rgba(0, 0, 0, 0.08)',
   },
-  button: {
-    padding: `${spacing[2]}px ${spacing[5]}px`,
-    borderRadius: 10,
-    fontSize: 15,
-    fontWeight: 600,
+  iconButton: {
+    width: 48,
+    height: 48,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     cursor: 'pointer',
     border: 'none',
     transition: 'all 0.2s ease',
+    position: 'relative',
   },
   cancelButton: {
-    background: 'rgba(0, 0, 0, 0.05)',
+    background: 'rgba(255, 255, 255, 0.8)',
     color: '#4a5568',
     border: '1px solid rgba(0, 0, 0, 0.1)',
     ':hover': {
-      background: 'rgba(0, 0, 0, 0.08)',
-      borderColor: 'rgba(0, 0, 0, 0.15)',
+      background: 'rgba(255, 255, 255, 0.95)',
+      transform: 'scale(1.1)',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
     },
   },
   exportButton: {
@@ -119,14 +124,18 @@ const styles = stylex.create({
     color: 'white',
     boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
     ':hover': {
-      transform: 'translateY(-2px)',
-      boxShadow: '0 6px 16px rgba(102, 126, 234, 0.4)',
+      transform: 'scale(1.1)',
+      boxShadow: '0 6px 16px rgba(102, 126, 234, 0.5)',
     },
     ':disabled': {
       opacity: 0.5,
       cursor: 'not-allowed',
       transform: 'none',
     },
+  },
+  buttonIcon: {
+    width: 24,
+    height: 24,
   },
 });
 
@@ -223,18 +232,22 @@ export default function ExportConfigModal({
 
         <div {...stylex.props(styles.footer)}>
           <button
-            {...stylex.props(styles.button, styles.cancelButton)}
+            {...stylex.props(styles.iconButton, styles.cancelButton)}
             onClick={onClose}
             disabled={isExporting}
+            aria-label="Cancel"
+            title="Cancel"
           >
-            Cancel
+            <Close {...stylex.props(styles.buttonIcon)} />
           </button>
           <button
-            {...stylex.props(styles.button, styles.exportButton)}
+            {...stylex.props(styles.iconButton, styles.exportButton)}
             onClick={handleExport}
             disabled={isExporting}
+            aria-label={isExporting ? 'Exporting...' : 'Export Annotations'}
+            title={isExporting ? 'Exporting...' : 'Export Annotations'}
           >
-            {isExporting ? 'Exporting...' : 'Export Annotations'}
+            <CheckmarkFilled {...stylex.props(styles.buttonIcon)} />
           </button>
         </div>
       </div>
