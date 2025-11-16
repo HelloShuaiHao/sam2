@@ -110,6 +110,7 @@ class InferenceAPI:
             self.session_states[session_id] = {
                 "canceled": False,
                 "state": inference_state,
+                "video_path": request.path,  # Store video path for export
             }
             return StartSessionResponse(session_id=session_id)
 
