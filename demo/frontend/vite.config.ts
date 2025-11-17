@@ -23,6 +23,7 @@ import relay from 'vite-plugin-relay';
 import {stylexPlugin} from 'vite-plugin-stylex-dev';
 
 export default defineConfig({
+  base: '/sam2/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
