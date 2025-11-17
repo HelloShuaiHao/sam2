@@ -27,7 +27,9 @@ export default function App() {
         </SettingsContextProvider>
       ),
     },
-  ]);
+  ], {
+    basename: '/sam2',
+  });
 
   return <RouterProvider router={router} />;
 }
