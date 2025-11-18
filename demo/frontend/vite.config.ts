@@ -22,8 +22,8 @@ import babel from 'vite-plugin-babel';
 import relay from 'vite-plugin-relay';
 import {stylexPlugin} from 'vite-plugin-stylex-dev';
 
-export default defineConfig({
-  base: '/sam2/',
+export default defineConfig(({mode}) => ({
+  base: mode === 'production' ? '/sam2/' : '/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -42,4 +42,4 @@ export default defineConfig({
   worker: {
     plugins: () => [relay],
   },
-});
+}));

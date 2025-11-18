@@ -18,6 +18,8 @@ import SettingsContextProvider from '@/settings/SettingsContextProvider';
 import {RouterProvider, createBrowserRouter} from 'react-router-dom';
 
 export default function App() {
+  const basename = import.meta.env.MODE === 'production' ? '/sam2' : '/';
+
   const router = createBrowserRouter([
     {
       path: '*',
@@ -28,7 +30,7 @@ export default function App() {
       ),
     },
   ], {
-    basename: '/sam2',
+    basename,
   });
 
   return <RouterProvider router={router} />;

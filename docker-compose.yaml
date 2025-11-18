@@ -33,6 +33,9 @@ services:
       - VIDEO_ENCODE_MAX_WIDTH=1280
       - VIDEO_ENCODE_MAX_HEIGHT=720
       - VIDEO_ENCODE_VERBOSE=False
+      # PyTorch memory optimization
+      - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True,max_split_size_mb:512
+      - CUDA_VISIBLE_DEVICES=0
     deploy:
       resources:
         reservations:
