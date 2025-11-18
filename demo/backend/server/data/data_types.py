@@ -29,7 +29,9 @@ class Video(relay.Node):
         return f"{API_URL}/{self.path}"
 
     @strawberry.field
-    def poster_url(self) -> str:
+    def poster_url(self) -> Optional[str]:
+        if self.poster_path is None:
+            return None
         return f"{API_URL}/{self.poster_path}"
 
     @classmethod
