@@ -20,7 +20,7 @@ import Logger from '@/common/logger/Logger';
 import {isStreamingAtom, uploadingStateAtom, VideoData} from '@/demo/atoms';
 import {useAtomValue, useSetAtom} from 'jotai';
 import {ComponentType, useCallback} from 'react';
-import {useNavigate} from 'react-router-dom';
+import {useLocation, useNavigate} from 'react-router-dom';
 
 type Props = {
   videoGalleryModalTrigger?: ComponentType<VideoGalleryTriggerProps>;
@@ -37,6 +37,7 @@ export default function ChangeVideoModal({
   const setUploadingState = useSetAtom(uploadingStateAtom);
   const video = useVideo();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handlePause = useCallback(() => {
     video?.pause();
