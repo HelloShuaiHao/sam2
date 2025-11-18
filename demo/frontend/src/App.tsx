@@ -28,7 +28,7 @@ export default function App() {
       ),
     },
   ], {
-    basename: '/',
+    basename: '/sam2',
   });
 
   return <RouterProvider router={router} />;
