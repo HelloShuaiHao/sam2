@@ -482,30 +482,51 @@ class InferenceAPI:
             )
             return False
         else:
+            # Log GPU memory before cleanup
+            if torch.cuda.is_available():
+                logger.info(f"GPU memory BEFORE cleanup - allocated: {torch.cuda.memory_allocated() // 1024**2} MiB, "
+                           f"reserved: {torch.cuda.memory_reserved() // 1024**2} MiB")
+
             # Explicitly clear GPU memory for this session
             inference_state = session.get("state")
             if inference_state is not None:
-                # CRITICAL: Reset predictor state to clear cached features
+                # CRITICAL: Reset predictor state FIRST to clear cached features
+                # This should be done before clearing images
                 try:
+                    logger.info("Calling predictor.reset_state()")
                     self.predictor.reset_state(inference_state)
                 except Exception as e:
                     logger.warning(f"Failed to reset predictor state: {e}")
 
-                # CRITICAL: Explicitly delete GPU tensors to free memory
-                # Handle the 'images' tensor/object which is the main GPU memory consumer
+                # CRITICAL: Clear the images tensor (main GPU memory consumer)
                 if "images" in inference_state:
                     images = inference_state["images"]
                     if images is not None:
-                        # If it's a tensor, explicitly delete it
+                        logger.info(f"Clearing images tensor/loader, type: {type(images)}")
+
+                        # If it's a tensor, move to CPU first then delete
                         if torch.is_tensor(images):
+                            logger.info(f"Images tensor shape: {images.shape}, device: {images.device}, "
+                                       f"size: {images.element_size() * images.nelement() // 1024**2} MiB")
+                            # Move to CPU to release GPU memory
+                            images = images.cpu()
+                            # Remove from inference_state immediately
+                            inference_state["images"] = None
+                            # Delete the reference
                             del images
+                            logger.info("Deleted images tensor")
                         # If it's AsyncVideoFrameLoader, clear its internal images list
                         elif hasattr(images, 'images'):
-                            for img in images.images:
+                            logger.info(f"Clearing AsyncVideoFrameLoader with {len(images.images)} frames")
+                            for idx, img in enumerate(images.images):
                                 if img is not None and torch.is_tensor(img):
+                                    img = img.cpu()
+                                    images.images[idx] = None
                                     del img
                             images.images.clear()
-                        inference_state["images"] = None
+                            inference_state["images"] = None
+                            del images
+                            logger.info("Deleted AsyncVideoFrameLoader")
 
                 # Recursively clear dictionaries that may contain tensors
                 def clear_tensor_dict(d):
@@ -514,28 +535,38 @@ class InferenceAPI:
                         return
                     for k, v in list(d.items()):
                         if torch.is_tensor(v):
+                            # Move to CPU first to release GPU memory
+                            v_cpu = v.cpu()
+                            d[k] = None
                             del v
+                            del v_cpu
                         elif isinstance(v, dict):
                             clear_tensor_dict(v)
-                            v.clear()
                         elif isinstance(v, list):
-                            for item in v:
+                            for i, item in enumerate(v):
                                 if torch.is_tensor(item):
+                                    item_cpu = item.cpu()
+                                    v[i] = None
                                     del item
+                                    del item_cpu
                             v.clear()
-                    d.clear()
 
                 # Clear all data structures in inference_state
+                logger.info("Clearing inference_state data structures")
                 for key in ["cached_features", "constants",
                            "output_dict_per_obj", "temp_output_dict_per_obj",
                            "point_inputs_per_obj", "mask_inputs_per_obj"]:
                     if key in inference_state:
                         if isinstance(inference_state[key], dict):
                             clear_tensor_dict(inference_state[key])
+                            inference_state[key].clear()
                         elif isinstance(inference_state[key], list):
-                            for item in inference_state[key]:
+                            for i, item in enumerate(inference_state[key]):
                                 if torch.is_tensor(item):
+                                    item_cpu = item.cpu()
+                                    inference_state[key][i] = None
                                     del item
+                                    del item_cpu
                             inference_state[key].clear()
                         else:
                             inference_state[key] = None
@@ -547,10 +578,16 @@ class InferenceAPI:
             del session
 
             # Force garbage collection and clear CUDA cache
+            logger.info("Running garbage collection and clearing CUDA cache")
             gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
                 torch.cuda.synchronize()  # Ensure all operations complete
+
+            # Log GPU memory after cleanup
+            if torch.cuda.is_available():
+                logger.info(f"GPU memory AFTER cleanup - allocated: {torch.cuda.memory_allocated() // 1024**2} MiB, "
+                           f"reserved: {torch.cuda.memory_reserved() // 1024**2} MiB")
 
             logger.info(f"removed session {session_id} and cleared GPU memory; {self.__get_session_stats()}")
             return True
