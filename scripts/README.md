@@ -1,6 +1,6 @@
-# SAM2 Demo - Chrome Launcher Scripts
+# SAM2 Demo - Browser Launcher Scripts
 
-This folder contains scripts to launch Google Chrome with special flags that allow the SAM2 demo to work over HTTP (without HTTPS).
+This folder contains scripts to launch different browsers with configurations that allow the SAM2 demo to work over HTTP (without HTTPS).
 
 ## Why are these scripts needed?
 
@@ -9,11 +9,86 @@ The SAM2 demo uses **WebCodecs API** (VideoEncoder, VideoDecoder, VideoFrame) wh
 - ✅ `http://localhost` (local development)
 - ❌ `http://` (non-localhost HTTP)
 
-Since our demo is deployed at `http://ai.bygpu.com:55305/sam2/` without HTTPS, we need to tell Chrome to treat it as secure.
+Since our demo is deployed at `http://ai.bygpu.com:55305/sam2/` without HTTPS, we need to configure browsers properly.
+
+---
+
+## 🌐 Browser Comparison
+
+| Browser | Clears Cache? | Your Data Safe? | Setup Difficulty | Recommended For |
+|---------|---------------|-----------------|------------------|-----------------|
+| **Safari** 🦁 | ❌ No | ✅ Yes | Easy (auto-config) | **Daily use - Best choice!** |
+| **Firefox** 🦊 | ❌ No | ✅ Yes | Easy (separate profile) | **Alternative option** |
+| **Chrome** 🔵 | ⚠️ **Yes** | ⚠️ Isolated | Easy (temp profile) | Already have clean browser |
+
+### 🎯 Recommendation:
+- **Use Safari or Firefox** if you don't want to affect your Chrome cache/data
+- **Use Chrome** only if you don't mind temporary cache clearing
+
+---
 
 ## Available Scripts
 
-### 🍎 macOS: `start-sam2-chrome-macos.sh`
+### 🦁 macOS Safari: `start-sam2-safari-macos.sh` ⭐ RECOMMENDED
+
+**✅ Advantages:**
+- **Does NOT clear your cache or browsing data**
+- Uses your regular Safari (no separate instance)
+- Auto-configures developer settings
+- Lightweight and fast
+
+**How to use:**
+```bash
+# Make it executable (first time only)
+chmod +x start-sam2-safari-macos.sh
+
+# Run the script
+./start-sam2-safari-macos.sh
+```
+
+**What it does:**
+1. Enables Safari Develop Menu automatically
+2. Configures HTTP development settings
+3. Opens SAM2 demo in Safari
+4. Shows manual configuration steps
+
+**After Safari opens, you need to:**
+1. Click **Develop** menu → **Disable Cross-Origin Restrictions**
+2. Reload the page if needed
+
+---
+
+### 🦊 macOS Firefox: `start-sam2-firefox-macos.sh`
+
+**✅ Advantages:**
+- **Does NOT affect your regular Firefox data**
+- Uses a separate profile (isolated from daily browsing)
+- Keeps your regular Firefox untouched
+- Auto-configures all settings
+
+**How to use:**
+```bash
+# Make it executable (first time only)
+chmod +x start-sam2-firefox-macos.sh
+
+# Run the script
+./start-sam2-firefox-macos.sh
+```
+
+**What it does:**
+1. Creates a dedicated Firefox profile for SAM2
+2. Configures media permissions automatically
+3. Launches Firefox with the SAM2 URL
+4. Keeps your regular Firefox browsing data safe
+
+---
+
+### 🔵 macOS Chrome: `start-sam2-chrome-macos.sh`
+
+**⚠️ Warning:**
+- **WILL clear temporary cache** (uses `/tmp/chrome-sam2`)
+- Isolated from your regular Chrome
+- Does NOT affect your main Chrome profile data
 
 **How to use:**
 ```bash
@@ -131,8 +206,10 @@ ssh -L 7262:localhost:7262 -L 7263:localhost:7263 user@ai.bygpu.com
 ```
 scripts/
 ├── README.md                          # This file
-├── start-sam2-chrome-macos.sh        # macOS launcher script
-└── start-sam2-chrome-windows.bat     # Windows launcher script
+├── start-sam2-safari-macos.sh        # ⭐ Safari launcher (recommended)
+├── start-sam2-firefox-macos.sh       # Firefox launcher (alternative)
+├── start-sam2-chrome-macos.sh        # Chrome launcher (clears cache)
+└── start-sam2-chrome-windows.bat     # Windows Chrome launcher
 ```
 
 ---
