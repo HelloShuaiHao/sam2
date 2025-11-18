@@ -683,6 +683,10 @@ class SAM2VideoPredictor(SAM2Base):
     @torch.inference_mode()
     def reset_state(self, inference_state):
         """Remove all input points or mask in all frames throughout the video."""
+        import logging
+        logger = logging.getLogger(__name__)
+
+        logger.info("Resetting inference state...")
         self._reset_tracking_results(inference_state)
         # Remove all object ids
         inference_state["obj_id_to_idx"].clear()
@@ -696,23 +700,19 @@ class SAM2VideoPredictor(SAM2Base):
 
         # Explicitly clear cached features to free GPU memory
         if "cached_features" in inference_state:
+            logger.info(f"Clearing {len(inference_state['cached_features'])} cached features")
             inference_state["cached_features"].clear()
 
         # CRITICAL: Clear images tensor to free GPU memory
         # This is the main source of GPU memory consumption
+        # Note: only clear if being called from close_session context
+        # Don't clear during normal reset operations
         if "images" in inference_state:
             images = inference_state.get("images")
             if images is not None:
-                # If it's a tensor, explicitly delete it
-                if torch.is_tensor(images):
-                    del images
-                # If it's AsyncVideoFrameLoader, clear its internal images list
-                elif hasattr(images, 'images'):
-                    for img in images.images:
-                        if img is not None and torch.is_tensor(img):
-                            del img
-                    images.images.clear()
-                inference_state["images"] = None
+                logger.info(f"Note: images tensor/loader still present in reset_state (type: {type(images)})")
+                # We don't clear images here because reset_state is also called
+                # during normal operations, not just session cleanup
 
         # Force garbage collection and clear CUDA cache
         gc.collect()
