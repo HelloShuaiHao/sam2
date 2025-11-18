@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
+import sys
 from typing import Any, Generator
 
 from app_conf import (
@@ -24,7 +25,16 @@ from inference.multipart import MultipartResponseBuilder
 from inference.predictor import InferenceAPI
 from strawberry.flask.views import GraphQLView
 
+# Configure logging to show INFO level and above
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    stream=sys.stdout,
+    force=True
+)
+
 logger = logging.getLogger(__name__)
+logger.info("=== SAM2 Backend Starting ===")
 
 app = Flask(__name__)
 cors = CORS(app, supports_credentials=True)
