@@ -698,6 +698,22 @@ class SAM2VideoPredictor(SAM2Base):
         if "cached_features" in inference_state:
             inference_state["cached_features"].clear()
 
+        # CRITICAL: Clear images tensor to free GPU memory
+        # This is the main source of GPU memory consumption
+        if "images" in inference_state:
+            images = inference_state.get("images")
+            if images is not None:
+                # If it's a tensor, explicitly delete it
+                if torch.is_tensor(images):
+                    del images
+                # If it's AsyncVideoFrameLoader, clear its internal images list
+                elif hasattr(images, 'images'):
+                    for img in images.images:
+                        if img is not None and torch.is_tensor(img):
+                            del img
+                    images.images.clear()
+                inference_state["images"] = None
+
         # Force garbage collection and clear CUDA cache
         gc.collect()
         if torch.cuda.is_available():

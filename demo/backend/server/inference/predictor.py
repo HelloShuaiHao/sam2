@@ -491,14 +491,51 @@ class InferenceAPI:
                 except Exception as e:
                     logger.warning(f"Failed to reset predictor state: {e}")
 
-                # Clear all tensors in inference_state
-                for key in ["images", "cached_features", "constants",
+                # CRITICAL: Explicitly delete GPU tensors to free memory
+                # Handle the 'images' tensor/object which is the main GPU memory consumer
+                if "images" in inference_state:
+                    images = inference_state["images"]
+                    if images is not None:
+                        # If it's a tensor, explicitly delete it
+                        if torch.is_tensor(images):
+                            del images
+                        # If it's AsyncVideoFrameLoader, clear its internal images list
+                        elif hasattr(images, 'images'):
+                            for img in images.images:
+                                if img is not None and torch.is_tensor(img):
+                                    del img
+                            images.images.clear()
+                        inference_state["images"] = None
+
+                # Recursively clear dictionaries that may contain tensors
+                def clear_tensor_dict(d):
+                    """Recursively clear a dictionary that may contain tensors"""
+                    if not isinstance(d, dict):
+                        return
+                    for k, v in list(d.items()):
+                        if torch.is_tensor(v):
+                            del v
+                        elif isinstance(v, dict):
+                            clear_tensor_dict(v)
+                            v.clear()
+                        elif isinstance(v, list):
+                            for item in v:
+                                if torch.is_tensor(item):
+                                    del item
+                            v.clear()
+                    d.clear()
+
+                # Clear all data structures in inference_state
+                for key in ["cached_features", "constants",
                            "output_dict_per_obj", "temp_output_dict_per_obj",
                            "point_inputs_per_obj", "mask_inputs_per_obj"]:
                     if key in inference_state:
                         if isinstance(inference_state[key], dict):
-                            inference_state[key].clear()
+                            clear_tensor_dict(inference_state[key])
                         elif isinstance(inference_state[key], list):
+                            for item in inference_state[key]:
+                                if torch.is_tensor(item):
+                                    del item
                             inference_state[key].clear()
                         else:
                             inference_state[key] = None
