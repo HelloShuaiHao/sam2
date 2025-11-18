@@ -21,7 +21,7 @@ import {sessionAtom, uploadingStateAtom} from '@/demo/atoms';
 import {MAX_UPLOAD_FILE_SIZE} from '@/demo/DemoConfig';
 import {Close, CloudUpload} from '@carbon/icons-react';
 import {useSetAtom} from 'jotai';
-import {useNavigate} from 'react-router-dom';
+import {useLocation, useNavigate} from 'react-router-dom';
 
 type Props = {
   onUpload: () => void;
@@ -29,6 +29,7 @@ type Props = {
 
 export default function UploadOption({onUpload}: Props) {
   const navigate = useNavigate();
+  const location = useLocation();
   const {isMobile} = useScreenSize();
   const setUploadingState = useSetAtom(uploadingStateAtom);
   const setSession = useSetAtom(sessionAtom);
