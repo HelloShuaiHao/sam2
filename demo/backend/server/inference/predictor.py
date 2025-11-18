@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import contextlib
+import gc
 import logging
 import os
 import uuid
@@ -351,6 +352,12 @@ class InferenceAPI:
             finally:
                 # Log upon completion (so that e.g. we can see if two propagations happen in parallel).
                 # Using `finally` here to log even when the tracking is aborted with GeneratorExit.
+
+                # Clear GPU cache after propagation completes or is cancelled
+                gc.collect()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+
                 logger.info(
                     f"propagation ended in session {session_id}; {self.__get_session_stats()}"
                 )
@@ -424,5 +431,28 @@ class InferenceAPI:
             )
             return False
         else:
-            logger.info(f"removed session {session_id}; {self.__get_session_stats()}")
+            # Explicitly clear GPU memory for this session
+            inference_state = session.get("state")
+            if inference_state is not None:
+                # Clear all tensors in inference_state
+                for key in ["images", "cached_features", "constants",
+                           "output_dict_per_obj", "temp_output_dict_per_obj"]:
+                    if key in inference_state:
+                        if isinstance(inference_state[key], dict):
+                            inference_state[key].clear()
+                        else:
+                            inference_state[key] = None
+
+                # Clear the inference state itself
+                inference_state.clear()
+
+            # Delete the session reference
+            del session
+
+            # Force garbage collection and clear CUDA cache
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+            logger.info(f"removed session {session_id} and cleared GPU memory; {self.__get_session_stats()}")
             return True

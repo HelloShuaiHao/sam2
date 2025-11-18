@@ -50,6 +50,7 @@ export default function useRestartSession() {
     if (isStreaming) {
       await video.abortStreamMasks();
     }
+    // startSession now automatically closes the previous session before starting a new one
     await video?.startSession(inputVideo.path);
     video.frame = 0;
     setActiveTrackletObjectId(0);

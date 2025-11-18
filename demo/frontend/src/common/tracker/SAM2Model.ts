@@ -116,10 +116,20 @@ export class SAM2Model extends Tracker {
     this._maskCtx = maskCtx;
   }
 
-  public startSession(videoPath: string): Promise<void> {
+  public async startSession(videoPath: string): Promise<void> {
     // Reset streaming state. Force update with the true flag to make sure the
     // UI updates its state.
     this._updateStreamingState('none', true);
+
+    // Close existing session before starting a new one to prevent memory leaks
+    if (this._session.id !== null) {
+      try {
+        await this.closeSession();
+      } catch (error) {
+        Logger.error('Failed to close previous session:', error);
+        // Continue with starting new session even if close fails
+      }
+    }
 
     return new Promise(resolve => {
       try {
