@@ -143,11 +143,19 @@ class InferenceAPI:
                 normalize_coords=False,
             )
 
-            masks_binary = (masks > self.score_thresh)[:, 0].cpu().numpy()
+            # CRITICAL: Move to CPU first, then detach from computation graph
+            masks_binary = (masks > self.score_thresh)[:, 0].detach().cpu().numpy()
+            # Explicitly delete GPU tensors
+            del masks
 
             rle_mask_list = self.__get_rle_mask_list(
                 object_ids=object_ids, masks=masks_binary
             )
+
+            # Force garbage collection to clear GPU tensors
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
             return PropagateDataResponse(
                 frame_index=frame_idx,
@@ -183,11 +191,19 @@ class InferenceAPI:
                 obj_id=obj_id,
                 mask=torch.tensor(mask > 0),
             )
-            masks_binary = (video_res_masks > self.score_thresh)[:, 0].cpu().numpy()
+            # CRITICAL: Move to CPU first, then detach from computation graph
+            masks_binary = (video_res_masks > self.score_thresh)[:, 0].detach().cpu().numpy()
+            # Explicitly delete GPU tensors
+            del video_res_masks
 
             rle_mask_list = self.__get_rle_mask_list(
                 object_ids=obj_ids, masks=masks_binary
             )
+
+            # Force garbage collection to clear GPU tensors
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
             return PropagateDataResponse(
                 frame_index=frame_idx,
@@ -215,11 +231,19 @@ class InferenceAPI:
                     inference_state, frame_idx, obj_id
                 )
             )
-            masks_binary = (video_res_masks > self.score_thresh)[:, 0].cpu().numpy()
+            # CRITICAL: Move to CPU first, then detach from computation graph
+            masks_binary = (video_res_masks > self.score_thresh)[:, 0].detach().cpu().numpy()
+            # Explicitly delete GPU tensors
+            del video_res_masks
 
             rle_mask_list = self.__get_rle_mask_list(
                 object_ids=obj_ids, masks=masks_binary
             )
+
+            # Force garbage collection to clear GPU tensors
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
             return PropagateDataResponse(
                 frame_index=frame_idx,
@@ -256,7 +280,11 @@ class InferenceAPI:
 
             results = []
             for frame_index, video_res_masks in updated_frames:
-                masks = (video_res_masks > self.score_thresh)[:, 0].cpu().numpy()
+                # CRITICAL: Move to CPU first, then detach from computation graph
+                masks = (video_res_masks > self.score_thresh)[:, 0].detach().cpu().numpy()
+                # Explicitly delete GPU tensors
+                del video_res_masks
+
                 rle_mask_list = self.__get_rle_mask_list(
                     object_ids=new_obj_ids, masks=masks
                 )
@@ -266,6 +294,11 @@ class InferenceAPI:
                         results=rle_mask_list,
                     )
                 )
+
+            # Force garbage collection to clear GPU tensors
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
             return RemoveObjectResponse(results=results)
 
@@ -312,9 +345,12 @@ class InferenceAPI:
                             return None
 
                         frame_idx, obj_ids, video_res_masks = outputs
+                        # CRITICAL: Move to CPU first, then detach from computation graph
                         masks_binary = (
-                            (video_res_masks > self.score_thresh)[:, 0].cpu().numpy()
+                            (video_res_masks > self.score_thresh)[:, 0].detach().cpu().numpy()
                         )
+                        # Explicitly delete GPU tensors to free memory
+                        del video_res_masks
 
                         rle_mask_list = self.__get_rle_mask_list(
                             object_ids=obj_ids, masks=masks_binary
@@ -324,6 +360,12 @@ class InferenceAPI:
                             frame_index=frame_idx,
                             results=rle_mask_list,
                         )
+
+                        # Periodic cleanup every few frames to prevent accumulation
+                        if frame_idx % 10 == 0:
+                            gc.collect()
+                            if torch.cuda.is_available():
+                                torch.cuda.empty_cache()
 
                 # Then doing the backward propagation (reverse in time)
                 if propagation_direction in ["both", "backward"]:
@@ -337,9 +379,12 @@ class InferenceAPI:
                             return None
 
                         frame_idx, obj_ids, video_res_masks = outputs
+                        # CRITICAL: Move to CPU first, then detach from computation graph
                         masks_binary = (
-                            (video_res_masks > self.score_thresh)[:, 0].cpu().numpy()
+                            (video_res_masks > self.score_thresh)[:, 0].detach().cpu().numpy()
                         )
+                        # Explicitly delete GPU tensors to free memory
+                        del video_res_masks
 
                         rle_mask_list = self.__get_rle_mask_list(
                             object_ids=obj_ids, masks=masks_binary
@@ -349,6 +394,12 @@ class InferenceAPI:
                             frame_index=frame_idx,
                             results=rle_mask_list,
                         )
+
+                        # Periodic cleanup every few frames to prevent accumulation
+                        if frame_idx % 10 == 0:
+                            gc.collect()
+                            if torch.cuda.is_available():
+                                torch.cuda.empty_cache()
             finally:
                 # Log upon completion (so that e.g. we can see if two propagations happen in parallel).
                 # Using `finally` here to log even when the tracking is aborted with GeneratorExit.
@@ -434,11 +485,20 @@ class InferenceAPI:
             # Explicitly clear GPU memory for this session
             inference_state = session.get("state")
             if inference_state is not None:
+                # CRITICAL: Reset predictor state to clear cached features
+                try:
+                    self.predictor.reset_state(inference_state)
+                except Exception as e:
+                    logger.warning(f"Failed to reset predictor state: {e}")
+
                 # Clear all tensors in inference_state
                 for key in ["images", "cached_features", "constants",
-                           "output_dict_per_obj", "temp_output_dict_per_obj"]:
+                           "output_dict_per_obj", "temp_output_dict_per_obj",
+                           "point_inputs_per_obj", "mask_inputs_per_obj"]:
                     if key in inference_state:
                         if isinstance(inference_state[key], dict):
+                            inference_state[key].clear()
+                        elif isinstance(inference_state[key], list):
                             inference_state[key].clear()
                         else:
                             inference_state[key] = None
@@ -453,6 +513,7 @@ class InferenceAPI:
             gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
+                torch.cuda.synchronize()  # Ensure all operations complete
 
             logger.info(f"removed session {session_id} and cleared GPU memory; {self.__get_session_stats()}")
             return True
