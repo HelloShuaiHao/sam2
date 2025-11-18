@@ -142,6 +142,10 @@ class Mutation:
     ) -> StartSession:
         inference_api: InferenceAPI = info.context["inference_api"]
 
+        # CRITICAL: Close all existing sessions before starting a new one
+        # This prevents GPU memory leak when switching videos
+        inference_api.close_all_sessions()
+
         request = StartSessionRequest(
             type="start_session",
             path=f"{DATA_PATH}/{input.path}",

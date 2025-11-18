@@ -119,6 +119,14 @@ class InferenceAPI:
         is_successful = self.__clear_session_state(request.session_id)
         return CloseSessionResponse(success=is_successful)
 
+    def close_all_sessions(self) -> None:
+        """Close all active sessions to free GPU memory."""
+        session_ids = list(self.session_states.keys())
+        logger.info(f"Closing {len(session_ids)} active session(s): {session_ids}")
+        for session_id in session_ids:
+            self.__clear_session_state(session_id)
+        logger.info("All sessions closed")
+
     def add_points(
         self, request: AddPointsRequest, test: str = ""
     ) -> PropagateDataResponse:
