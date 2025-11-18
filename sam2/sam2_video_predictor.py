@@ -4,6 +4,7 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+import gc
 import warnings
 from collections import OrderedDict
 
@@ -629,6 +630,13 @@ class SAM2VideoPredictor(SAM2Base):
             )
             yield frame_idx, obj_ids, video_res_masks
 
+            # Clean up intermediate tensors to prevent memory accumulation
+            del pred_masks_per_obj, all_pred_masks
+            # Periodically clear CUDA cache every 10 frames
+            if frame_idx % 10 == 0:
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+
     @torch.inference_mode()
     def clear_all_prompts_in_frame(
         self, inference_state, frame_idx, obj_id, need_output=True
@@ -685,6 +693,15 @@ class SAM2VideoPredictor(SAM2Base):
         inference_state["output_dict_per_obj"].clear()
         inference_state["temp_output_dict_per_obj"].clear()
         inference_state["frames_tracked_per_obj"].clear()
+
+        # Explicitly clear cached features to free GPU memory
+        if "cached_features" in inference_state:
+            inference_state["cached_features"].clear()
+
+        # Force garbage collection and clear CUDA cache
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     def _reset_tracking_results(self, inference_state):
         """Reset all tracking inputs and results across the videos."""
