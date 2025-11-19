@@ -10,7 +10,11 @@ transformers==4.36.0
 peft==0.7.1
 accelerate==0.25.0
 bitsandbytes==0.41.3
-tiktoken==0.5.2  # Required for Qwen models
+
+# Tokenizer dependencies
+sentencepiece==0.1.99  # Required for LLaMA/LLaVA models
+tiktoken==0.5.2        # Required for Qwen models
+protobuf==4.25.1       # Required for SentencePiece
 
 # Data processing
 datasets==2.15.0
