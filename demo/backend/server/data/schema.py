@@ -7,6 +7,7 @@ import hashlib
 import os
 import shutil
 import tempfile
+from glob import glob
 from pathlib import Path
 from typing import Iterable, List, Optional, Tuple, Union
 
@@ -15,6 +16,7 @@ import strawberry
 from app_conf import (
     DATA_PATH,
     DEFAULT_VIDEO_PATH,
+    GALLERY_PATH,
     MAX_UPLOAD_VIDEO_DURATION,
     UPLOADS_PATH,
     UPLOADS_PREFIX,
@@ -41,8 +43,8 @@ from data.data_types import (
     StartSessionInput,
     Video,
 )
-from data.loader import get_video
-from data.store import get_videos
+from data.loader import get_video, preload_data
+from data.store import get_videos, set_videos
 from data.transcoder import get_video_metadata, transcode, VideoMetadata
 from inference.data_types import (
     AddPointsRequest,
@@ -88,8 +90,33 @@ class Query:
     ) -> Iterable[Video]:
         """
         Return all available videos.
+        Automatically detects and loads new videos from the gallery folder.
         """
         all_videos = get_videos()
+
+        # Check for new videos in the gallery folder
+        video_path_pattern = os.path.join(GALLERY_PATH, "**/*.mp4")
+        current_video_paths = set(glob(video_path_pattern, recursive=True))
+
+        # Get currently loaded video paths
+        loaded_video_codes = set(all_videos.keys())
+
+        # Check if there are any new videos
+        new_videos_found = False
+        for video_path in current_video_paths:
+            video_code = os.path.relpath(video_path, GALLERY_PATH.parent)
+            if video_code not in loaded_video_codes:
+                new_videos_found = True
+                break
+
+        # If new videos are found, reload all videos
+        if new_videos_found:
+            print(f"[Videos Query] Detected new videos in gallery, reloading...")
+            reloaded_videos = preload_data()
+            set_videos(reloaded_videos)
+            all_videos = reloaded_videos
+            print(f"[Videos Query] Loaded {len(all_videos)} videos total")
+
         return all_videos.values()
 
     @strawberry.field
