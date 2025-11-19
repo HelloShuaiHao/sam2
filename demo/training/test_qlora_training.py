@@ -189,6 +189,12 @@ def test_model_loading(config):
 
         # Setup model (loads with 4-bit quantization)
         print("\n  Loading model in 4-bit precision...")
+
+        # Debug: print config
+        print(f"\n  DEBUG: Model name: {config.model.name}")
+        print(f"  DEBUG: Cache dir: {config.model.cache_dir}")
+        print(f"  DEBUG: Training method: {config.training.method}")
+
         trainer.setup()
 
         monitor_vram("After model load")
@@ -204,7 +210,10 @@ def test_model_loading(config):
         return trainer
 
     except Exception as e:
+        import traceback
         print(f"\n  ❌ Model loading failed: {e}")
+        print("\n  Full traceback:")
+        traceback.print_exc()
         print("\n  Possible solutions:")
         print("    1. Check HuggingFace access token: huggingface-cli login")
         print("    2. Verify model access permissions")
