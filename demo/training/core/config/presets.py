@@ -198,7 +198,7 @@ class ConfigPresets:
         )
 
     @staticmethod
-    def ultra_low_memory(data_path: str, val_path: str = None, model_name: str = "Qwen/Qwen-VL-Chat") -> TrainingConfig:
+    def ultra_low_memory(data_path: str, val_path: str = None, model_name: str = "liuhaotian/llava-v1.5-7b") -> TrainingConfig:
         """Ultra low memory configuration for 8GB GPUs using QLoRA.
 
         Uses 4-bit quantization (QLoRA), minimal batch size, aggressive settings.
@@ -209,13 +209,13 @@ class ConfigPresets:
         Args:
             data_path: Path to training data
             val_path: Optional path to validation data
-            model_name: Model to use (default: Qwen-VL-Chat, smallest at ~6GB QLoRA)
+            model_name: Model to use (default: LLaVA-v1.5-7b, stable at ~7GB QLoRA)
 
         Returns:
             TrainingConfig optimized for 8GB VRAM
         """
         return TrainingConfig(
-            model=ModelConfig(name=model_name, type="qwen-vl"),
+            model=ModelConfig(name=model_name, type="llava"),
             data=DataConfig(
                 train_path=data_path,
                 val_path=val_path,
@@ -263,5 +263,5 @@ class ConfigPresets:
             "production": "High quality for deployment (5 epochs, rank 64, batch 4)",
             "memory_efficient": "Optimized for low VRAM (rank 16, batch 1)",
             "high_quality": "Best results with 13B model (5 epochs, rank 128)",
-            "ultra_low_memory": "🔥 8GB GPU support with QLoRA (4-bit, rank 8, batch 1, ~5-7GB VRAM)"
+            "ultra_low_memory": "🔥 8GB GPU support with QLoRA (LLaVA-7B, 4-bit, rank 8, ~7GB VRAM)"
         }
