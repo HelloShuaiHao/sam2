@@ -2,6 +2,8 @@
 
 End-to-end pipeline for fine-tuning vision-language models on SAM2 annotation exports.
 
+🔥 **NEW**: Now supports **8GB consumer GPUs** (RTX 3060, RTX 4060) with QLoRA!
+
 ## Features
 
 ### Phase 1: Data Preparation ✅ (COMPLETE & TESTED)
@@ -27,30 +29,33 @@ End-to-end pipeline for fine-tuning vision-language models on SAM2 annotation ex
   - Random splitting with reproducible seeds
   - Split validation and statistics
 
-### Phase 2: Training Configuration ✅ (COMPLETE)
+### Phase 2: Training Configuration ✅ (COMPLETE with QLoRA!)
 
 - **Model Registry**
   - 4 pre-registered vision-language models (LLaVA 7B/13B, Qwen-VL, InstructBLIP)
-  - Automatic VRAM estimation for different configurations
+  - Automatic VRAM estimation for LoRA and **QLoRA** modes
   - Model metadata (size, VRAM requirements, sequence lengths)
+  - 🔥 **QLoRA VRAM estimates**: Qwen-VL (6GB), LLaVA-7B (7GB)
 
 - **Configuration System**
   - Pydantic-based type-safe configuration
-  - 5 pre-configured presets:
+  - 6 pre-configured presets:
     - **Quick Test**: Fast iteration (1 epoch, rank 8)
     - **Development**: Balanced experimentation (3 epochs, rank 32)
     - **Production**: High quality (5 epochs, rank 64)
     - **Memory Efficient**: Low VRAM (rank 16, batch 1)
     - **High Quality**: Best results with 13B model (rank 128)
+    - 🔥 **Ultra Low Memory**: 8GB GPU support with QLoRA (4-bit, rank 8)
   - JSON serialization for reproducibility
   - Automatic validation of hyperparameters
 
-- **LoRA Trainer (Core Implementation)**
+- **LoRA & QLoRA Trainer**
   - PEFT integration for parameter-efficient fine-tuning
+  - 🔥 **4-bit quantization (QLoRA)** for 8GB GPUs
   - Automatic target module detection
   - Gradient checkpointing support
   - Mixed precision training (FP16/BF16)
-  - HuggingFace Transformers integration
+  - HuggingFace Transformers + bitsandbytes integration
 
 - **Checkpoint Management**
   - Automatic checkpoint pruning (keep best + N recent)
@@ -191,6 +196,52 @@ cd demo/training
 python example_training_config.py
 ```
 
+### 🔥 NEW: QLoRA for 8GB GPUs
+
+Train 7B vision-language models on consumer GPUs!
+
+```python
+from core.config import ConfigPresets, ModelRegistry
+
+# One-line setup for 8GB GPUs
+config = ConfigPresets.ultra_low_memory(
+    data_path="./output/splits/train.jsonl",
+    val_path="./output/splits/val.jsonl"
+)
+
+# Estimate VRAM (QLoRA mode)
+vram = ModelRegistry.estimate_vram_requirements(
+    "Qwen/Qwen-VL-Chat",
+    use_qlora=True,
+    batch_size=1,
+    gradient_accumulation=32
+)
+print(f"Estimated VRAM: {vram['total_vram_gb']:.1f}GB")  # ~6GB!
+print(f"Recommended GPU: {vram['recommended_gpu']}")     # RTX 3060 12GB / RTX 4060 8GB
+```
+
+**Try the QLoRA demo:**
+
+```bash
+cd demo/training
+python example_qlora_8gb.py
+```
+
+**Test QLoRA on your 8GB GPU:**
+
+```bash
+# Quick test (5 minutes)
+python test_qlora_training.py --quick
+
+# Monitor VRAM in another terminal
+watch -n 1 nvidia-smi
+```
+
+**Read the guides:**
+
+- `MEMORY_OPTIMIZATION.md` - Detailed memory optimization tips
+- `TESTING_8GB.md` - Step-by-step testing guide with troubleshooting
+
 ## Project Structure
 
 ```
@@ -221,10 +272,14 @@ demo/training/
 │   └── checkpoints/         # ✅ Checkpoint management
 │       ├── checkpoint_manager.py
 │       └── best_model_tracker.py
-├── requirements.txt         # ✅ All dependencies
-├── README.md                # ✅ Documentation
+├── requirements.txt              # ✅ All dependencies
+├── README.md                     # ✅ Documentation
 ├── example_data_preparation.py   # ✅ Phase 1 demo
-└── example_training_config.py    # ✅ Phase 2 demo
+├── example_training_config.py    # ✅ Phase 2 demo
+├── example_qlora_8gb.py          # 🔥 QLoRA demo for 8GB GPUs
+├── test_qlora_training.py        # 🔥 Test QLoRA on your 8GB GPU
+├── MEMORY_OPTIMIZATION.md        # 🔥 8GB GPU optimization guide
+└── TESTING_8GB.md                # 🔥 Testing guide with troubleshooting
 ```
 
 ## Development Status
@@ -237,14 +292,16 @@ demo/training/
   - [x] Dataset splitting utilities (3 strategies)
   - [x] **Tested with real SAM2 exports** (40 frames, 3 classes, 120 objects)
 
-- [x] **Phase 2: Training Configuration** - ✅ COMPLETE
+- [x] **Phase 2: Training Configuration** - ✅ COMPLETE + 🔥 QLoRA
   - [x] Training configuration schema (Pydantic)
   - [x] Model registry (4 vision-language models)
-  - [x] Configuration presets (5 presets)
+  - [x] Configuration presets (6 presets including ultra_low_memory)
   - [x] LoRA trainer implementation
+  - [x] 🔥 QLoRA trainer with 4-bit quantization
   - [x] Checkpoint management
   - [x] Best model tracking
-  - [x] VRAM estimation
+  - [x] VRAM estimation (LoRA + QLoRA modes)
+  - [x] 🔥 8GB GPU support (RTX 3060, RTX 4060)
 
 - [ ] **Phase 3: Experiment Tracking** - In Progress
   - [ ] Tensorboard integration
@@ -255,7 +312,7 @@ demo/training/
 - [ ] **Phase 5: API & UI**
 - [ ] **Phase 6: Testing & Documentation**
 
-**Overall Progress**: 19/58 tasks complete (33%)
+**Overall Progress**: 28/58 tasks complete (48%) - 🔥 QLoRA support added!
 
 ## Testing
 
