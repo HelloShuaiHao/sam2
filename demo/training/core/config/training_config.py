@@ -32,6 +32,32 @@ class ModelConfig(BaseModel):
     cache_dir: Optional[str] = Field(None, description="Cache directory for model downloads")
 
 
+class QuantizationConfig(BaseModel):
+    """Quantization configuration for QLoRA.
+
+    Attributes:
+        load_in_4bit: Load model in 4-bit precision
+        load_in_8bit: Load model in 8-bit precision
+        bnb_4bit_compute_dtype: Computation dtype for 4-bit (float16, bfloat16)
+        bnb_4bit_quant_type: Quantization type (fp4, nf4)
+        bnb_4bit_use_double_quant: Use double quantization (nested quantization)
+    """
+    load_in_4bit: bool = Field(True, description="Load model in 4-bit precision")
+    load_in_8bit: bool = Field(False, description="Load model in 8-bit precision")
+    bnb_4bit_compute_dtype: str = Field("bfloat16", description="Compute dtype: float16 or bfloat16")
+    bnb_4bit_quant_type: str = Field("nf4", description="Quantization type: fp4 or nf4")
+    bnb_4bit_use_double_quant: bool = Field(True, description="Use double quantization for extra memory savings")
+
+    @field_validator('load_in_4bit', 'load_in_8bit')
+    @classmethod
+    def validate_quantization_exclusive(cls, v, info):
+        """Ensure only one quantization mode is enabled."""
+        if info.field_name == 'load_in_8bit' and v:
+            if info.data.get('load_in_4bit', False):
+                raise ValueError("Cannot use both 4-bit and 8-bit quantization simultaneously")
+        return v
+
+
 class LoRAConfig(BaseModel):
     """LoRA-specific configuration.
 
@@ -99,6 +125,7 @@ class TrainingHyperparameters(BaseModel):
     max_grad_norm: float = Field(1.0, gt=0, description="Max gradient norm")
 
     lora: Optional[LoRAConfig] = Field(None, description="LoRA configuration")
+    quantization: Optional[QuantizationConfig] = Field(None, description="Quantization configuration for QLoRA")
 
     @field_validator('lora')
     @classmethod
@@ -108,6 +135,18 @@ class TrainingHyperparameters(BaseModel):
         if method in [TrainingMethod.LORA, TrainingMethod.QLORA] and v is None:
             # Create default LoRA config
             return LoRAConfig()
+        return v
+
+    @field_validator('quantization')
+    @classmethod
+    def validate_quantization_config(cls, v, info):
+        """Ensure quantization config exists for QLoRA method."""
+        method = info.data.get('method')
+        if method == TrainingMethod.QLORA and v is None:
+            # Create default quantization config for QLoRA
+            return QuantizationConfig()
+        elif method != TrainingMethod.QLORA and v is not None:
+            raise ValueError(f"Quantization config only supported for QLoRA method, not {method}")
         return v
 
 
