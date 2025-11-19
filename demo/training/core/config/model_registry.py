@@ -21,7 +21,8 @@ class ModelInfo:
         type: Model type
         size_gb: Approximate model size in GB
         min_vram_gb: Minimum VRAM required (full precision)
-        lora_vram_gb: VRAM required for LoRA training
+        lora_vram_gb: VRAM required for LoRA training (FP16/BF16)
+        qlora_vram_gb: VRAM required for QLoRA training (4-bit quantization)
         max_sequence_length: Maximum sequence length
         vision_encoder: Vision encoder name
         language_model: Language model name
@@ -34,6 +35,7 @@ class ModelInfo:
     size_gb: float
     min_vram_gb: int
     lora_vram_gb: int
+    qlora_vram_gb: int
     max_sequence_length: int
     vision_encoder: str
     language_model: str
@@ -53,6 +55,7 @@ class ModelRegistry:
             size_gb=13.5,
             min_vram_gb=40,
             lora_vram_gb=24,
+            qlora_vram_gb=7,  # 4-bit quantized: ~3.5GB model + 2-3GB optimizer/activations
             max_sequence_length=2048,
             vision_encoder="CLIP ViT-L/14",
             language_model="Vicuna-7B",
@@ -66,6 +69,7 @@ class ModelRegistry:
             size_gb=26.0,
             min_vram_gb=80,
             lora_vram_gb=40,
+            qlora_vram_gb=12,  # 4-bit quantized: ~6.5GB model + 4-5GB optimizer/activations
             max_sequence_length=2048,
             vision_encoder="CLIP ViT-L/14",
             language_model="Vicuna-13B",
@@ -79,6 +83,7 @@ class ModelRegistry:
             size_gb=9.6,
             min_vram_gb=32,
             lora_vram_gb=20,
+            qlora_vram_gb=6,  # 4-bit quantized: ~2.5GB model + 2-3GB optimizer/activations
             max_sequence_length=2048,
             vision_encoder="ViT-bigG",
             language_model="Qwen-7B",
@@ -92,6 +97,7 @@ class ModelRegistry:
             size_gb=14.0,
             min_vram_gb=40,
             lora_vram_gb=24,
+            qlora_vram_gb=7,  # 4-bit quantized: ~3.5GB model + 2-3GB optimizer/activations
             max_sequence_length=2048,
             vision_encoder="EVA-CLIP",
             language_model="Vicuna-7B",
@@ -163,14 +169,18 @@ class ModelRegistry:
         cls,
         model_name: str,
         use_lora: bool = True,
-        batch_size: int = 4
+        use_qlora: bool = False,
+        batch_size: int = 4,
+        gradient_accumulation: int = 1
     ) -> Dict[str, float]:
         """Estimate VRAM requirements for training.
 
         Args:
             model_name: Name of the model
             use_lora: Whether using LoRA (vs full fine-tuning)
-            batch_size: Training batch size
+            use_qlora: Whether using QLoRA (4-bit quantization)
+            batch_size: Training batch size per device
+            gradient_accumulation: Gradient accumulation steps
 
         Returns:
             Dictionary with VRAM estimates
@@ -179,27 +189,82 @@ class ModelRegistry:
         if not model:
             return {"error": "Model not found in registry"}
 
-        # Base model VRAM
-        base_vram = model.lora_vram_gb if use_lora else model.min_vram_gb
+        if use_qlora:
+            # QLoRA mode: 4-bit quantized model
+            # Model is loaded in 4-bit (~25% of original size)
+            quantized_model_size = model.size_gb * 0.25
 
-        # Optimizer states (Adam: 2x parameters for momentum + variance)
-        optimizer_multiplier = 0.5 if use_lora else 2.0
-        optimizer_vram = model.size_gb * optimizer_multiplier
+            # LoRA adapters (very small, ~1-2% of model size)
+            adapter_size = model.size_gb * 0.015
 
-        # Gradients
-        gradient_vram = model.size_gb * (0.2 if use_lora else 1.0)
+            # Optimizer states (only for LoRA params)
+            optimizer_vram = adapter_size * 2.0
 
-        # Activations (scales with batch size)
-        activation_per_sample = 2.0  # GB per sample (rough estimate)
-        activation_vram = activation_per_sample * batch_size
+            # Gradients (only for LoRA params)
+            gradient_vram = adapter_size
 
-        total_vram = base_vram + optimizer_vram + gradient_vram + activation_vram
+            # Activations (scales with batch size, but reduced with gradient checkpointing)
+            activation_per_sample = 0.5  # GB per sample (reduced with checkpointing)
+            activation_vram = activation_per_sample * batch_size
 
-        return {
-            "model_vram_gb": base_vram,
-            "optimizer_vram_gb": optimizer_vram,
-            "gradient_vram_gb": gradient_vram,
-            "activation_vram_gb": activation_vram,
-            "total_vram_gb": total_vram,
-            "recommended_gpu": "A100 80GB" if total_vram > 40 else "A100 40GB" if total_vram > 24 else "RTX 4090 24GB"
-        }
+            total_vram = quantized_model_size + adapter_size + optimizer_vram + gradient_vram + activation_vram
+
+            return {
+                "method": "QLoRA (4-bit)",
+                "model_vram_gb": quantized_model_size,
+                "adapter_vram_gb": adapter_size,
+                "optimizer_vram_gb": optimizer_vram,
+                "gradient_vram_gb": gradient_vram,
+                "activation_vram_gb": activation_vram,
+                "total_vram_gb": total_vram,
+                "effective_batch_size": batch_size * gradient_accumulation,
+                "recommended_gpu": "RTX 4090 24GB" if total_vram > 16 else "RTX 3090 24GB" if total_vram > 12 else "RTX 4060 Ti 16GB" if total_vram > 8 else "RTX 3060 12GB / RTX 4060 8GB"
+            }
+
+        elif use_lora:
+            # Regular LoRA mode: FP16/BF16
+            base_vram = model.lora_vram_gb
+
+            # Optimizer states (Adam: 2x parameters for momentum + variance)
+            optimizer_vram = model.size_gb * 0.5
+
+            # Gradients
+            gradient_vram = model.size_gb * 0.2
+
+            # Activations (scales with batch size)
+            activation_per_sample = 2.0  # GB per sample
+            activation_vram = activation_per_sample * batch_size
+
+            total_vram = base_vram + optimizer_vram + gradient_vram + activation_vram
+
+            return {
+                "method": "LoRA (FP16/BF16)",
+                "model_vram_gb": base_vram,
+                "optimizer_vram_gb": optimizer_vram,
+                "gradient_vram_gb": gradient_vram,
+                "activation_vram_gb": activation_vram,
+                "total_vram_gb": total_vram,
+                "effective_batch_size": batch_size * gradient_accumulation,
+                "recommended_gpu": "A100 80GB" if total_vram > 40 else "A100 40GB" if total_vram > 24 else "RTX 4090 24GB"
+            }
+
+        else:
+            # Full fine-tuning mode
+            base_vram = model.min_vram_gb
+            optimizer_vram = model.size_gb * 2.0
+            gradient_vram = model.size_gb * 1.0
+            activation_per_sample = 2.0
+            activation_vram = activation_per_sample * batch_size
+
+            total_vram = base_vram + optimizer_vram + gradient_vram + activation_vram
+
+            return {
+                "method": "Full Fine-tuning",
+                "model_vram_gb": base_vram,
+                "optimizer_vram_gb": optimizer_vram,
+                "gradient_vram_gb": gradient_vram,
+                "activation_vram_gb": activation_vram,
+                "total_vram_gb": total_vram,
+                "effective_batch_size": batch_size * gradient_accumulation,
+                "recommended_gpu": "A100 80GB" if total_vram > 40 else "A100 40GB"
+            }

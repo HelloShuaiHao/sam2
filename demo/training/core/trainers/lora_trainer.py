@@ -9,12 +9,13 @@ from transformers import (
     AutoModelForCausalLM,
     TrainingArguments,
     Trainer,
-    TrainerCallback
+    TrainerCallback,
+    BitsAndBytesConfig
 )
-from peft import LoraConfig, get_peft_model, PeftModel, TaskType
+from peft import LoraConfig, get_peft_model, PeftModel, TaskType, prepare_model_for_kbit_training
 
 from .base_trainer import BaseTrainer
-from ..config import TrainingConfig
+from ..config import TrainingConfig, TrainingMethod
 
 logger = logging.getLogger(__name__)
 
@@ -52,18 +53,56 @@ class LoRATrainer(BaseTrainer):
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
+        # Prepare quantization config for QLoRA
+        quantization_config = None
+        if self.config.training.method == TrainingMethod.QLORA:
+            logger.info("Setting up QLoRA with 4-bit quantization...")
+            quant_cfg = self.config.training.quantization
+
+            # Determine compute dtype
+            compute_dtype = torch.bfloat16 if quant_cfg.bnb_4bit_compute_dtype == "bfloat16" else torch.float16
+
+            quantization_config = BitsAndBytesConfig(
+                load_in_4bit=quant_cfg.load_in_4bit,
+                load_in_8bit=quant_cfg.load_in_8bit,
+                bnb_4bit_compute_dtype=compute_dtype,
+                bnb_4bit_quant_type=quant_cfg.bnb_4bit_quant_type,
+                bnb_4bit_use_double_quant=quant_cfg.bnb_4bit_use_double_quant,
+            )
+            logger.info(f"  - Quantization: {quant_cfg.bnb_4bit_quant_type}")
+            logger.info(f"  - Compute dtype: {quant_cfg.bnb_4bit_compute_dtype}")
+            logger.info(f"  - Double quantization: {quant_cfg.bnb_4bit_use_double_quant}")
+
         # Load base model
         logger.info("Loading base model...")
+        load_kwargs = {
+            "cache_dir": self.config.model.cache_dir,
+            "trust_remote_code": True,
+        }
+
+        if quantization_config is not None:
+            # QLoRA mode: use quantization config
+            load_kwargs["quantization_config"] = quantization_config
+            load_kwargs["device_map"] = "auto"  # Required for quantization
+        else:
+            # Regular LoRA mode: use mixed precision
+            load_kwargs["torch_dtype"] = torch.bfloat16 if self.config.hardware.mixed_precision.value == "bf16" else torch.float16
+            load_kwargs["device_map"] = self.config.hardware.device if self.config.hardware.device == "auto" else None
+
         self.model = AutoModelForCausalLM.from_pretrained(
             self.config.model.name,
-            cache_dir=self.config.model.cache_dir,
-            torch_dtype=torch.bfloat16 if self.config.hardware.mixed_precision.value == "bf16" else torch.float16,
-            device_map=self.config.hardware.device if self.config.hardware.device == "auto" else None,
-            trust_remote_code=True
+            **load_kwargs
         )
 
-        # Enable gradient checkpointing if configured
-        if self.config.hardware.gradient_checkpointing:
+        # Prepare model for k-bit training (QLoRA specific)
+        if self.config.training.method == TrainingMethod.QLORA:
+            logger.info("Preparing model for k-bit training...")
+            self.model = prepare_model_for_kbit_training(
+                self.model,
+                use_gradient_checkpointing=self.config.hardware.gradient_checkpointing
+            )
+        elif self.config.hardware.gradient_checkpointing:
+            # Enable gradient checkpointing for regular LoRA
             self.model.gradient_checkpointing_enable()
             logger.info("Gradient checkpointing enabled")
 
