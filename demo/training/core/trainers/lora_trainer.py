@@ -43,10 +43,13 @@ class LoRATrainer(BaseTrainer):
 
         # Load tokenizer
         logger.info("Loading tokenizer...")
+        tokenizer_kwargs = {"trust_remote_code": True}
+        if self.config.model.cache_dir:
+            tokenizer_kwargs["cache_dir"] = self.config.model.cache_dir
+
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.config.model.name,
-            cache_dir=self.config.model.cache_dir,
-            trust_remote_code=True
+            **tokenizer_kwargs
         )
 
         # Ensure tokenizer has pad token
@@ -75,10 +78,9 @@ class LoRATrainer(BaseTrainer):
 
         # Load base model
         logger.info("Loading base model...")
-        load_kwargs = {
-            "cache_dir": self.config.model.cache_dir,
-            "trust_remote_code": True,
-        }
+        load_kwargs = {"trust_remote_code": True}
+        if self.config.model.cache_dir:
+            load_kwargs["cache_dir"] = self.config.model.cache_dir
 
         if quantization_config is not None:
             # QLoRA mode: use quantization config
