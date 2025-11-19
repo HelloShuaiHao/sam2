@@ -1,0 +1,15 @@
+{
+  "dataset_name": "SAM2 LLaVA Format",
+  "version": "1.0.0",
+  "format": "llava_jsonl",
+  "total_samples": 40,
+  "dataset_file": "llava_dataset.jsonl",
+  "description": "Video segmentation annotations in LLaVA instruction-tuning format",
+  "features": {
+    "id": "Unique sample identifier",
+    "image": "Path to image file",
+    "conversations": "Instruction-response pairs",
+    "masks": "RLE-encoded segmentation masks",
+    "bounding_boxes": "Object bounding boxes [x, y, w, h]"
+  }
+}
