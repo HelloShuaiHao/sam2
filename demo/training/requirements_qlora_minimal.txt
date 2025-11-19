@@ -1,0 +1,15 @@
+# Minimal dependencies for QLoRA testing
+# Install with: pip install -r requirements_qlora_minimal.txt
+
+# Core ML frameworks (IMPORTANT: Install PyTorch with CUDA first!)
+# torch>=2.0.0  # Install separately with CUDA support
+transformers>=4.36.0
+peft>=0.7.0
+accelerate>=0.25.0
+bitsandbytes>=0.41.0
+
+# Configuration
+pydantic>=2.5.0
+
+# Utilities
+tqdm>=4.66.0
