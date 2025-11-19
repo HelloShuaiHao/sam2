@@ -105,14 +105,14 @@ def main():
     print("=" * 80)
     print()
 
-    # Create config using the preset
+    # Create config using the preset (LLaVA-7B for stability)
     config = ConfigPresets.ultra_low_memory(
         data_path="./output/splits/train.jsonl",
         val_path="./output/splits/val.jsonl"
     )
 
     print(f"Preset: ultra_low_memory")
-    print(f"  Model: {config.model.name}")
+    print(f"  Model: {config.model.name} (LLaVA-7B is more stable than Qwen-VL)")
     print(f"  Training method: {config.training.method.value}")
     print(f"  Batch size: {config.training.batch_size}")
     print(f"  Gradient accumulation: {config.training.gradient_accumulation_steps}")
