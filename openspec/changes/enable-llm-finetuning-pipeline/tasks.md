@@ -6,97 +6,97 @@ This document outlines the implementation tasks for building an end-to-end LLM f
 ## Task Breakdown
 
 ### Phase 1: Data Preparation & Validation (Weeks 1-2)
-
+Phase 1 的目标是把原始标注数据自动转换为适合 LLM 训练的格式，并对数据质量进行全面检查和报告，同时合理划分训练/验证/测试集，为后续模型训练做好数据基础。
 #### Task 1.1: Format Converter Foundation
-- [ ] **1.1.1** Create `data_converter/` module structure
-  - File: `demo/training/data_converter/__init__.py`
-  - File: `demo/training/data_converter/base_converter.py`
+- [x] **1.1.1** Create `data_converter/` module structure
+  - File: `demo/training/core/data_converter/__init__.py`
+  - File: `demo/training/core/data_converter/base_converter.py`
   - Define abstract base class for format converters
   - Validation: Abstract class has `convert()` and `validate()` methods
 
-- [ ] **1.1.2** Implement SAM2 JSON parser
-  - File: `demo/training/data_converter/sam2_parser.py`
+- [x] **1.1.2** Implement SAM2 JSON parser
+  - File: `demo/training/core/data_converter/sam2_parser.py`
   - Parse exported ZIP file structure
   - Extract annotations, metadata, and frame references
   - Validation: Successfully parses sample SAM2 export
 
-- [ ] **1.1.3** Implement HuggingFace dataset converter
-  - File: `demo/training/data_converter/huggingface_converter.py`
+- [x] **1.1.3** Implement HuggingFace dataset converter
+  - File: `demo/training/core/data_converter/huggingface_converter.py`
   - Convert SAM2 annotations to HuggingFace `datasets` format
   - Include image paths, masks, bounding boxes
   - Validation: Generates loadable HF dataset from sample data
 
-- [ ] **1.1.4** Implement LLaVA instruction converter
-  - File: `demo/training/data_converter/llava_converter.py`
+- [x] **1.1.4** Implement LLaVA instruction converter
+  - File: `demo/training/core/data_converter/llava_converter.py`
   - Convert to LLaVA-style conversation format (JSONL)
   - Generate instruction-response pairs for segmentation tasks
   - Validation: Generates valid LLaVA JSONL from sample data
 
-- [ ] **1.1.5** Add format detection and auto-selection
-  - File: `demo/training/data_converter/format_detector.py`
+- [ ] **1.1.5** Add format detection and auto-selection (deferred - not critical for MVP)
+  - File: `demo/training/core/data_converter/format_detector.py`
   - Detect input format automatically
   - Provide format recommendations based on target model
   - Validation: Correctly detects SAM2 exports vs other formats
 
 #### Task 1.2: Quality Validation System
-- [ ] **1.2.1** Create validation framework
-  - File: `demo/training/validation/validator.py`
+- [x] **1.2.1** Create validation framework
+  - File: `demo/training/core/validation/validator.py`
   - Define validation rule interface
   - Implement rule execution engine
   - Generate structured validation report
   - Validation: Framework runs multiple validation rules
 
-- [ ] **1.2.2** Implement basic data checks
-  - File: `demo/training/validation/basic_checks.py`
+- [x] **1.2.2** Implement basic data checks
+  - File: `demo/training/core/validation/basic_checks.py`
   - Check for missing annotations
   - Detect duplicate frames
   - Validate mask RLE format
   - Verify bounding box coordinates
   - Validation: Detects common data issues in test cases
 
-- [ ] **1.2.3** Implement dataset balance analysis
-  - File: `demo/training/validation/balance_analysis.py`
+- [x] **1.2.3** Implement dataset balance analysis
+  - File: `demo/training/core/validation/balance_analysis.py`
   - Calculate class distribution
   - Detect severe class imbalance (> 10:1 ratio)
   - Recommend augmentation strategies
   - Validation: Generates balance report for sample dataset
 
-- [ ] **1.2.4** Implement quality metrics calculation
-  - File: `demo/training/validation/quality_metrics.py`
+- [x] **1.2.4** Implement quality metrics calculation
+  - File: `demo/training/core/validation/quality_metrics.py`
   - Compute mask area statistics
   - Analyze annotation density per frame
   - Check annotation consistency across frames
   - Validation: Generates quality metrics for sample data
 
-- [ ] **1.2.5** Create validation report generator
-  - File: `demo/training/validation/report_generator.py`
+- [x] **1.2.5** Create validation report generator
+  - File: `demo/training/core/validation/report_generator.py`
   - Generate human-readable Markdown report
   - Include pass/warning/error sections
   - Provide actionable recommendations
   - Validation: Generates complete report from validation results
 
 #### Task 1.3: Dataset Splitting
-- [ ] **1.3.1** Implement stratified splitting
-  - File: `demo/training/data_splitter/stratified_splitter.py`
+- [x] **1.3.1** Implement stratified splitting
+  - File: `demo/training/core/data_splitter/stratified_splitter.py`
   - Split data while maintaining class balance
   - Support configurable train/val/test ratios
   - Handle edge cases (small datasets, rare classes)
   - Validation: Split maintains class distribution within 5%
 
-- [ ] **1.3.2** Implement temporal splitting (for videos)
-  - File: `demo/training/data_splitter/temporal_splitter.py`
+- [x] **1.3.2** Implement temporal splitting (for videos)
+  - File: `demo/training/core/data_splitter/temporal_splitter.py`
   - Split by video segments (avoid leakage between frames)
   - Ensure train/val/test don't have overlapping video clips
   - Validation: No frame overlap between splits
 
-- [ ] **1.3.3** Add random splitting with seeding
-  - File: `demo/training/data_splitter/random_splitter.py`
+- [x] **1.3.3** Add random splitting with seeding
+  - File: `demo/training/core/data_splitter/random_splitter.py`
   - Simple random split with reproducible seed
   - Support for custom split ratios
   - Validation: Reproducible splits with same seed
 
-- [ ] **1.3.4** Create split configuration manager
-  - File: `demo/training/data_splitter/split_config.py`
+- [x] **1.3.4** Create split configuration manager
+  - File: `demo/training/core/data_splitter/split_config.py`
   - Store split configuration (ratios, strategy, seed)
   - Validate split ratios sum to 1.0
   - Save split metadata for reproducibility

@@ -1,0 +1,16 @@
+{
+  "name": "SAM2 Vision-Language Dataset",
+  "version": "1.0.0",
+  "description": "Dataset converted from SAM2 annotations for vision-language model fine-tuning",
+  "total_samples": 40,
+  "num_classes": 0,
+  "classes": [],
+  "format": "huggingface",
+  "features": {
+    "id": "string",
+    "image": "image_path",
+    "conversations": "list[dict]",
+    "masks": "list[string]",
+    "bounding_boxes": "list[list[int]]"
+  }
+}
