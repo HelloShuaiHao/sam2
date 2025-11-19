@@ -43,7 +43,10 @@ class LoRATrainer(BaseTrainer):
 
         # Load tokenizer
         logger.info("Loading tokenizer...")
-        tokenizer_kwargs = {"trust_remote_code": True}
+        tokenizer_kwargs = {
+            "trust_remote_code": True,
+            "use_fast": False  # Disable fast tokenizer to avoid conversion issues
+        }
         if self.config.model.cache_dir:
             tokenizer_kwargs["cache_dir"] = self.config.model.cache_dir
 
