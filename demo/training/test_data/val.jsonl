@@ -1,0 +1,2 @@
+{"id": "sample_8", "image": "dummy_image_8.jpg", "conversations": [{"from": "human", "value": "Describe what you see in this image."}, {"from": "gpt", "value": "This is a test image 8 with some objects."}]}
+{"id": "sample_9", "image": "dummy_image_9.jpg", "conversations": [{"from": "human", "value": "Describe what you see in this image."}, {"from": "gpt", "value": "This is a test image 9 with some objects."}]}

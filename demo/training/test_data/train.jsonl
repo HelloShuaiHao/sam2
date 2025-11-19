@@ -1,0 +1,8 @@
+{"id": "sample_0", "image": "dummy_image_0.jpg", "conversations": [{"from": "human", "value": "Describe what you see in this image."}, {"from": "gpt", "value": "This is a test image 0 with some objects."}]}
+{"id": "sample_1", "image": "dummy_image_1.jpg", "conversations": [{"from": "human", "value": "Describe what you see in this image."}, {"from": "gpt", "value": "This is a test image 1 with some objects."}]}
+{"id": "sample_2", "image": "dummy_image_2.jpg", "conversations": [{"from": "human", "value": "Describe what you see in this image."}, {"from": "gpt", "value": "This is a test image 2 with some objects."}]}
+{"id": "sample_3", "image": "dummy_image_3.jpg", "conversations": [{"from": "human", "value": "Describe what you see in this image."}, {"from": "gpt", "value": "This is a test image 3 with some objects."}]}
+{"id": "sample_4", "image": "dummy_image_4.jpg", "conversations": [{"from": "human", "value": "Describe what you see in this image."}, {"from": "gpt", "value": "This is a test image 4 with some objects."}]}
+{"id": "sample_5", "image": "dummy_image_5.jpg", "conversations": [{"from": "human", "value": "Describe what you see in this image."}, {"from": "gpt", "value": "This is a test image 5 with some objects."}]}
+{"id": "sample_6", "image": "dummy_image_6.jpg", "conversations": [{"from": "human", "value": "Describe what you see in this image."}, {"from": "gpt", "value": "This is a test image 6 with some objects."}]}
+{"id": "sample_7", "image": "dummy_image_7.jpg", "conversations": [{"from": "human", "value": "Describe what you see in this image."}, {"from": "gpt", "value": "This is a test image 7 with some objects."}]}

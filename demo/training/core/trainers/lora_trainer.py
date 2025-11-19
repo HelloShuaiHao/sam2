@@ -7,6 +7,8 @@ import torch
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
+    AutoModelForVision2Seq,
+    AutoProcessor,
     TrainingArguments,
     Trainer,
     TrainerCallback,
@@ -41,7 +43,10 @@ class LoRATrainer(BaseTrainer):
         """Set up model, tokenizer, and LoRA configuration."""
         logger.info(f"Setting up LoRA trainer for model: {self.config.model.name}")
 
-        # Load tokenizer
+        # Detect model type
+        is_vision_model = self._is_vision_language_model()
+
+        # Load tokenizer or processor
         logger.info("Loading tokenizer...")
         tokenizer_kwargs = {
             "trust_remote_code": True,
@@ -50,14 +55,30 @@ class LoRATrainer(BaseTrainer):
         if self.config.model.cache_dir:
             tokenizer_kwargs["cache_dir"] = self.config.model.cache_dir
 
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.config.model.name,
-            **tokenizer_kwargs
-        )
+        if is_vision_model:
+            # For vision-language models, use AutoProcessor
+            try:
+                self.tokenizer = AutoProcessor.from_pretrained(
+                    self.config.model.name,
+                    **tokenizer_kwargs
+                )
+                logger.info("Loaded processor for vision-language model")
+            except Exception as e:
+                logger.warning(f"Failed to load processor, falling back to tokenizer: {e}")
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    self.config.model.name,
+                    **tokenizer_kwargs
+                )
+        else:
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                self.config.model.name,
+                **tokenizer_kwargs
+            )
 
         # Ensure tokenizer has pad token
-        if self.tokenizer.pad_token is None:
-            self.tokenizer.pad_token = self.tokenizer.eos_token
+        if hasattr(self.tokenizer, 'pad_token') and self.tokenizer.pad_token is None:
+            if hasattr(self.tokenizer, 'eos_token'):
+                self.tokenizer.pad_token = self.tokenizer.eos_token
 
         # Prepare quantization config for QLoRA
         quantization_config = None
@@ -81,7 +102,7 @@ class LoRATrainer(BaseTrainer):
 
         # Load base model
         logger.info("Loading base model...")
-        load_kwargs = {"trust_remote_code": True}
+        load_kwargs = {}
         if self.config.model.cache_dir:
             load_kwargs["cache_dir"] = self.config.model.cache_dir
 
@@ -89,15 +110,40 @@ class LoRATrainer(BaseTrainer):
             # QLoRA mode: use quantization config
             load_kwargs["quantization_config"] = quantization_config
             load_kwargs["device_map"] = "auto"  # Required for quantization
+            load_kwargs["torch_dtype"] = torch.float16  # Required for stable 4-bit loading
         else:
             # Regular LoRA mode: use mixed precision
             load_kwargs["torch_dtype"] = torch.bfloat16 if self.config.hardware.mixed_precision.value == "bf16" else torch.float16
             load_kwargs["device_map"] = self.config.hardware.device if self.config.hardware.device == "auto" else None
+            load_kwargs["trust_remote_code"] = True
 
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.config.model.name,
-            **load_kwargs
-        )
+        # Choose the appropriate model class
+        if is_vision_model:
+            # For LLaVA models, use the specific loader
+            if "llava" in self.config.model.name.lower():
+                logger.info("Loading LLaVA model using LlavaForConditionalGeneration...")
+                from transformers import LlavaForConditionalGeneration
+                self.model = LlavaForConditionalGeneration.from_pretrained(
+                    self.config.model.name,
+                    **load_kwargs
+                )
+            else:
+                # For other vision-language models
+                logger.info("Loading vision-language model using AutoModelForVision2Seq...")
+                try:
+                    self.model = AutoModelForVision2Seq.from_pretrained(
+                        self.config.model.name,
+                        **load_kwargs
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed with AutoModelForVision2Seq: {e}")
+                    raise
+        else:
+            logger.info("Loading causal language model...")
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.config.model.name,
+                **load_kwargs
+            )
 
         # Prepare model for k-bit training (QLoRA specific)
         if self.config.training.method == TrainingMethod.QLORA:
@@ -308,3 +354,16 @@ class LoRATrainer(BaseTrainer):
                 trainable_params += param.numel()
 
         return trainable_params, all_params
+
+    def _is_vision_language_model(self) -> bool:
+        """Detect if the model is a vision-language model.
+
+        Returns:
+            True if the model is a vision-language model
+        """
+        model_name_lower = self.config.model.name.lower()
+        vision_model_keywords = [
+            "llava", "qwen-vl", "qwenvl", "blip", "git", "instructblip",
+            "paligemma", "phi3-vision", "cogvlm", "internvl"
+        ]
+        return any(keyword in model_name_lower for keyword in vision_model_keywords)

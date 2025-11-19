@@ -1,0 +1,63 @@
+{
+  "model": {
+    "name": "liuhaotian/llava-v1.5-7b",
+    "type": "llava",
+    "cache_dir": null
+  },
+  "data": {
+    "train_path": "./output/splits/train.jsonl",
+    "val_path": "./output/splits/val.jsonl",
+    "max_length": 512,
+    "image_size": 336
+  },
+  "training": {
+    "method": "qlora",
+    "learning_rate": 0.0002,
+    "batch_size": 1,
+    "gradient_accumulation_steps": 32,
+    "num_epochs": 3,
+    "warmup_ratio": 0.03,
+    "weight_decay": 0.0,
+    "max_grad_norm": 1.0,
+    "lora": {
+      "rank": 16,
+      "alpha": 32,
+      "dropout": 0.05,
+      "target_modules": [
+        "q_proj",
+        "v_proj",
+        "k_proj",
+        "o_proj"
+      ],
+      "bias": "none"
+    },
+    "quantization": {
+      "load_in_4bit": true,
+      "load_in_8bit": false,
+      "bnb_4bit_compute_dtype": "bfloat16",
+      "bnb_4bit_quant_type": "nf4",
+      "bnb_4bit_use_double_quant": true
+    }
+  },
+  "hardware": {
+    "device": "auto",
+    "mixed_precision": "bf16",
+    "gradient_checkpointing": true,
+    "num_workers": 2
+  },
+  "checkpointing": {
+    "save_steps": 100,
+    "save_total_limit": 3,
+    "output_dir": "./output",
+    "resume_from_checkpoint": null
+  },
+  "logging": {
+    "log_steps": 10,
+    "tensorboard_dir": "./runs",
+    "report_to": [
+      "tensorboard"
+    ]
+  },
+  "experiment_name": "custom_qlora_8gb",
+  "seed": 42
+}
