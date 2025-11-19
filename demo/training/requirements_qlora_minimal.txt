@@ -8,6 +8,9 @@ peft>=0.7.0
 accelerate>=0.25.0
 bitsandbytes>=0.41.0
 
+# Model-specific dependencies
+tiktoken>=0.5.0  # Required for Qwen models
+
 # Configuration
 pydantic>=2.5.0
 

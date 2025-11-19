@@ -10,6 +10,7 @@ transformers==4.36.0
 peft==0.7.1
 accelerate==0.25.0
 bitsandbytes==0.41.3
+tiktoken==0.5.2  # Required for Qwen models
 
 # Data processing
 datasets==2.15.0
