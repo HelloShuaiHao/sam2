@@ -7,11 +7,12 @@ services:
     ports:
       - 7262:80
     environment:
-      # Training API endpoint
-      - VITE_API_URL=http://ai.bygpu.com:7264
+      # Training API endpoint (通过外部Nginx代理访问)
+      # 前端通过 ai.bygpu.com:55305/sam2/ 访问
+      # Training API 通过 ai.bygpu.com:55305/api/training/ 访问
+      - VITE_API_URL=/api/training
     depends_on:
       - backend
-      - training-api
 
   backend:
     image: sam2/backend
