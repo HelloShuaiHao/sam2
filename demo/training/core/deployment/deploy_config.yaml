@@ -1,0 +1,427 @@
+# Deployment Configuration for IDoctor Fine-tuned Models
+# Multiple deployment scenarios with hardware requirements and settings
+
+# =============================================================================
+# Development Environment
+# =============================================================================
+development:
+  name: "Development Environment"
+  description: "Local development and testing"
+
+  # Model settings
+  model:
+    path: "./exported_model"
+    use_4bit: true
+    device: "auto"
+    trust_remote_code: true
+
+  # API settings
+  api:
+    host: "127.0.0.1"
+    port: 8000
+    workers: 1
+    reload: true  # Auto-reload on code changes
+    log_level: "debug"
+
+  # Hardware requirements
+  hardware:
+    min_gpu_memory_gb: 6
+    recommended_gpu_memory_gb: 8
+    min_ram_gb: 16
+    cpu_cores: 4
+
+  # Inference settings
+  inference:
+    max_batch_size: 1
+    max_concurrent_requests: 2
+    timeout_seconds: 60
+    default_max_length: 512
+    default_temperature: 0.7
+
+  # Storage
+  storage:
+    upload_dir: "./uploads"
+    output_dir: "./outputs"
+    max_upload_size_mb: 10
+
+# =============================================================================
+# Production Environment (8GB GPU)
+# =============================================================================
+production_8gb:
+  name: "Production - 8GB GPU"
+  description: "Production deployment on consumer GPUs (RTX 3060, RTX 3070)"
+
+  model:
+    path: "/app/model"
+    use_4bit: true
+    device: "cuda:0"
+    trust_remote_code: true
+
+  api:
+    host: "0.0.0.0"
+    port: 8000
+    workers: 2
+    reload: false
+    log_level: "info"
+
+  hardware:
+    min_gpu_memory_gb: 8
+    recommended_gpu_memory_gb: 10
+    min_ram_gb: 16
+    cpu_cores: 8
+
+  inference:
+    max_batch_size: 2
+    max_concurrent_requests: 4
+    timeout_seconds: 120
+    default_max_length: 512
+    default_temperature: 0.7
+
+  storage:
+    upload_dir: "/app/uploads"
+    output_dir: "/app/outputs"
+    max_upload_size_mb: 20
+
+  # Monitoring
+  monitoring:
+    enable_prometheus: false
+    enable_health_check: true
+    health_check_interval_seconds: 30
+
+  # Security
+  security:
+    enable_cors: true
+    allowed_origins: ["*"]  # Configure specific domains in production
+    enable_rate_limiting: true
+    rate_limit_per_minute: 30
+
+# =============================================================================
+# Production Environment (24GB GPU)
+# =============================================================================
+production_24gb:
+  name: "Production - 24GB GPU"
+  description: "High-performance production deployment (RTX 3090, RTX 4090, A5000)"
+
+  model:
+    path: "/app/model"
+    use_4bit: false  # Can use full precision
+    device: "cuda:0"
+    trust_remote_code: true
+
+  api:
+    host: "0.0.0.0"
+    port: 8000
+    workers: 4
+    reload: false
+    log_level: "info"
+
+  hardware:
+    min_gpu_memory_gb: 24
+    recommended_gpu_memory_gb: 24
+    min_ram_gb: 32
+    cpu_cores: 16
+
+  inference:
+    max_batch_size: 4
+    max_concurrent_requests: 8
+    timeout_seconds: 90
+    default_max_length: 512
+    default_temperature: 0.7
+
+  storage:
+    upload_dir: "/app/uploads"
+    output_dir: "/app/outputs"
+    max_upload_size_mb: 50
+
+  monitoring:
+    enable_prometheus: true
+    enable_health_check: true
+    health_check_interval_seconds: 15
+
+  security:
+    enable_cors: true
+    allowed_origins: ["https://your-domain.com"]
+    enable_rate_limiting: true
+    rate_limit_per_minute: 100
+
+# =============================================================================
+# Cloud Environment (AWS/GCP)
+# =============================================================================
+cloud:
+  name: "Cloud Deployment"
+  description: "Scalable cloud deployment with auto-scaling"
+
+  model:
+    path: "/app/model"
+    use_4bit: true
+    device: "auto"
+    trust_remote_code: true
+
+  api:
+    host: "0.0.0.0"
+    port: 8000
+    workers: 8
+    reload: false
+    log_level: "info"
+
+  hardware:
+    min_gpu_memory_gb: 16
+    recommended_gpu_memory_gb: 24
+    min_ram_gb: 64
+    cpu_cores: 32
+
+  inference:
+    max_batch_size: 8
+    max_concurrent_requests: 16
+    timeout_seconds: 120
+    default_max_length: 512
+    default_temperature: 0.7
+
+  storage:
+    upload_dir: "/mnt/storage/uploads"
+    output_dir: "/mnt/storage/outputs"
+    max_upload_size_mb: 100
+    use_s3: true  # Use cloud storage
+    s3_bucket: "idoctor-model-data"
+
+  monitoring:
+    enable_prometheus: true
+    enable_health_check: true
+    health_check_interval_seconds: 10
+    enable_cloudwatch: true  # AWS CloudWatch
+    enable_stackdriver: true  # GCP Stackdriver
+
+  security:
+    enable_cors: true
+    allowed_origins: ["https://your-domain.com", "https://api.your-domain.com"]
+    enable_rate_limiting: true
+    rate_limit_per_minute: 200
+    enable_authentication: true
+    auth_type: "jwt"  # JWT token authentication
+
+  scaling:
+    min_replicas: 2
+    max_replicas: 10
+    target_cpu_percent: 70
+    target_memory_percent: 80
+
+# =============================================================================
+# Testing Environment
+# =============================================================================
+testing:
+  name: "Testing Environment"
+  description: "Automated testing and CI/CD"
+
+  model:
+    path: "./test_model"
+    use_4bit: true
+    device: "auto"
+    trust_remote_code: true
+
+  api:
+    host: "127.0.0.1"
+    port: 8001
+    workers: 1
+    reload: false
+    log_level: "debug"
+
+  hardware:
+    min_gpu_memory_gb: 4
+    recommended_gpu_memory_gb: 6
+    min_ram_gb: 8
+    cpu_cores: 4
+
+  inference:
+    max_batch_size: 1
+    max_concurrent_requests: 1
+    timeout_seconds: 30
+    default_max_length: 256
+    default_temperature: 0.0  # Deterministic for testing
+
+  storage:
+    upload_dir: "./test_uploads"
+    output_dir: "./test_outputs"
+    max_upload_size_mb: 5
+
+  # Testing-specific settings
+  testing:
+    enable_mock_model: true  # Use mock model for fast tests
+    enable_profiling: true
+    save_test_artifacts: true
+
+# =============================================================================
+# Edge Deployment (CPU-only)
+# =============================================================================
+edge:
+  name: "Edge Deployment"
+  description: "CPU-only deployment for edge devices"
+
+  model:
+    path: "/app/model"
+    use_4bit: true
+    device: "cpu"
+    trust_remote_code: true
+    optimize_for_cpu: true
+
+  api:
+    host: "0.0.0.0"
+    port: 8000
+    workers: 2
+    reload: false
+    log_level: "info"
+
+  hardware:
+    min_gpu_memory_gb: 0  # CPU only
+    recommended_gpu_memory_gb: 0
+    min_ram_gb: 8
+    cpu_cores: 4
+
+  inference:
+    max_batch_size: 1
+    max_concurrent_requests: 2
+    timeout_seconds: 300  # Longer timeout for CPU
+    default_max_length: 256  # Shorter to reduce compute
+    default_temperature: 0.7
+
+  storage:
+    upload_dir: "/app/uploads"
+    output_dir: "/app/outputs"
+    max_upload_size_mb: 10
+
+  optimization:
+    use_onnx: true  # Convert to ONNX for CPU optimization
+    use_quantization: true
+    num_threads: 4
+
+# =============================================================================
+# Docker Compose Settings
+# =============================================================================
+docker_compose:
+  version: "3.8"
+
+  services:
+    - name: "idoctor-model-api"
+      image: "idoctor-model:latest"
+      ports: ["8000:8000"]
+      environment:
+        - "MODEL_PATH=/app/model"
+        - "MAX_LENGTH=512"
+        - "USE_4BIT=true"
+      volumes:
+        - "./model:/app/model"
+        - "./uploads:/app/uploads"
+        - "./outputs:/app/outputs"
+      deploy:
+        resources:
+          reservations:
+            devices:
+              - driver: "nvidia"
+                count: 1
+                capabilities: ["gpu"]
+
+# =============================================================================
+# Kubernetes Settings
+# =============================================================================
+kubernetes:
+  namespace: "idoctor-production"
+
+  deployment:
+    replicas: 3
+    image: "your-registry/idoctor-model:latest"
+    pullPolicy: "Always"
+
+    resources:
+      requests:
+        memory: "16Gi"
+        cpu: "4"
+        nvidia.com/gpu: "1"
+      limits:
+        memory: "32Gi"
+        cpu: "8"
+        nvidia.com/gpu: "1"
+
+  service:
+    type: "LoadBalancer"
+    port: 80
+    targetPort: 8000
+
+  ingress:
+    enabled: true
+    host: "api.idoctor.com"
+    tls:
+      enabled: true
+      secretName: "idoctor-tls"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+# =============================================================================
+# Environment Variables Reference
+# =============================================================================
+environment_variables:
+  # Model configuration
+  MODEL_PATH: "Path to model directory"
+  USE_4BIT: "Enable 4-bit quantization (true/false)"
+  DEVICE: "Device to use (auto/cuda/cpu)"
+
+  # API configuration
+  API_HOST: "API host address"
+  API_PORT: "API port number"
+  API_WORKERS: "Number of worker processes"
+
+  # Inference configuration
+  MAX_LENGTH: "Maximum generation length"
+  DEFAULT_TEMPERATURE: "Default sampling temperature"
+  MAX_BATCH_SIZE: "Maximum batch size"
+
+  # Storage configuration
+  UPLOAD_DIR: "Directory for uploaded files"
+  OUTPUT_DIR: "Directory for output files"
+  MAX_UPLOAD_SIZE_MB: "Maximum upload size in MB"
+
+  # Monitoring
+  ENABLE_PROMETHEUS: "Enable Prometheus metrics"
+  LOG_LEVEL: "Logging level (debug/info/warning/error)"
+
+# =============================================================================
+# Troubleshooting Guide
+# =============================================================================
+troubleshooting:
+  out_of_memory:
+    symptoms: ["CUDA out of memory", "Killed by kernel"]
+    solutions:
+      - "Enable 4-bit quantization (use_4bit: true)"
+      - "Reduce max_batch_size"
+      - "Reduce max_length"
+      - "Use gradient checkpointing"
+      - "Upgrade to GPU with more VRAM"
+
+  slow_inference:
+    symptoms: ["High latency", "Timeout errors"]
+    solutions:
+      - "Check GPU utilization (nvidia-smi)"
+      - "Reduce max_length"
+      - "Use FP16 instead of FP32"
+      - "Enable TensorRT optimization"
+      - "Check network bandwidth for remote storage"
+
+  model_load_failure:
+    symptoms: ["Failed to load model", "Segmentation fault"]
+    solutions:
+      - "Verify model path is correct"
+      - "Check model files are not corrupted"
+      - "Ensure sufficient RAM available"
+      - "Try loading with trust_remote_code=True"
+      - "Check PyTorch and Transformers versions"
+
+  api_errors:
+    symptoms: ["503 Service Unavailable", "Connection refused"]
+    solutions:
+      - "Check if service is running (docker ps)"
+      - "Verify port is not blocked by firewall"
+      - "Check logs (docker logs container_name)"
+      - "Ensure model loaded successfully"
+      - "Increase worker count for high load"
