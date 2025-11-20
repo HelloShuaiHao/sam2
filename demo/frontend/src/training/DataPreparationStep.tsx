@@ -125,22 +125,37 @@ export function DataPreparationStep({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6" style={{ backgroundColor: '#f9fafb', minHeight: '100vh' }}>
+      {/* Help Banner */}
+      <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-blue-800">
+            <p className="font-semibold mb-1">📁 File Paths Guide:</p>
+            <ul className="list-disc list-inside space-y-1 ml-2">
+              <li><strong>SAM2 Export Path:</strong> Server path to your exported ZIP file (e.g., <code className="bg-blue-100 px-1 rounded">/data/exports/my_video.zip</code>)</li>
+              <li><strong>Output Directory:</strong> Server path where processed data will be saved (e.g., <code className="bg-blue-100 px-1 rounded">/data/training_data</code>)</li>
+              <li><strong>Note:</strong> All paths are on the server running the Training API container</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       {/* Upload & Convert */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <Card className="border-2 border-blue-200">
+        <Card className="border-2 border-blue-200 bg-white">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl shadow-lg">
                 <Upload className="h-6 w-6 text-white" />
               </div>
               <div className="flex-1">
-                <CardTitle>1. Upload & Convert</CardTitle>
-                <CardDescription>Convert SAM2 export to training format</CardDescription>
+                <CardTitle className="text-gray-900">1. Upload & Convert</CardTitle>
+                <CardDescription className="text-gray-600">Convert SAM2 export to training format</CardDescription>
               </div>
               {convertResult && (
                 <Badge variant="success">
@@ -152,31 +167,35 @@ export function DataPreparationStep({
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                SAM2 Export Path
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                SAM2 Export Path (Server)
               </label>
               <input
                 type="text"
                 value={sam2Path}
                 onChange={(e) => setSam2Path(e.target.value)}
-                placeholder="/path/to/sam2_export.zip"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                placeholder="/data/exports/sam2_export.zip"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all bg-white text-gray-900"
+                style={{ color: '#111827' }}
                 disabled={currentSubStep !== "upload"}
               />
+              <p className="mt-1 text-xs text-gray-500">Example: /data/exports/video_annotations.zip</p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Output Directory
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                Output Directory (Server)
               </label>
               <input
                 type="text"
                 value={outputDir}
                 onChange={(e) => setOutputDir(e.target.value)}
-                placeholder="./output"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                placeholder="/data/training_output"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all bg-white text-gray-900"
+                style={{ color: '#111827' }}
                 disabled={currentSubStep !== "upload"}
               />
+              <p className="mt-1 text-xs text-gray-500">Example: /app/output/training_data</p>
             </div>
 
             <div>

@@ -125,7 +125,8 @@ export function ExperimentDashboard() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-blue-500 transition-all"
+                className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 transition-all bg-white text-gray-900"
+                style={{ color: '#111827', backgroundColor: '#ffffff' }}
               >
                 <option value="created_at">Recent First</option>
                 <option value="duration_seconds">By Duration</option>
