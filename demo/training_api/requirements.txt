@@ -1,0 +1,34 @@
+# FastAPI Training API Dependencies
+
+# Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6  # For file uploads
+
+# Data Validation
+pydantic==2.5.0
+email-validator==2.1.0
+
+# CORS and Middleware
+python-jose[cryptography]==3.3.0  # For JWT tokens (future auth)
+passlib[bcrypt]==1.7.4  # For password hashing (future auth)
+
+# Background Tasks (optional - for production)
+celery==5.3.4
+redis==5.0.1
+
+# Core Training Dependencies
+torch>=2.0.0
+transformers>=4.35.0
+datasets>=2.14.0
+peft>=0.6.0  # For LoRA
+bitsandbytes>=0.41.0  # For QLoRA
+accelerate>=0.24.0
+
+# Experiment Tracking
+tensorboard>=2.15.0
+wandb>=0.16.0  # Optional
+
+# Utilities
+numpy>=1.24.0
+pillow>=10.0.0

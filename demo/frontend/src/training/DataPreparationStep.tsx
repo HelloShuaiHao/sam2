@@ -1,0 +1,394 @@
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import {
+  Upload,
+  FileCheck,
+  Split,
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
+} from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { apiClient } from "@/lib/api-client";
+
+interface DataPreparationStepProps {
+  onComplete: (data: any) => void;
+  onBack: () => void;
+  canGoBack: boolean;
+}
+
+type SubStep = "upload" | "validate" | "split" | "complete";
+
+export function DataPreparationStep({
+  onComplete,
+  onBack,
+  canGoBack,
+}: DataPreparationStepProps) {
+  const [currentSubStep, setCurrentSubStep] = useState<SubStep>("upload");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Form state
+  const [sam2Path, setSam2Path] = useState("");
+  const [outputDir, setOutputDir] = useState("./output");
+  const [targetFormat, setTargetFormat] = useState<"llava" | "huggingface">("llava");
+
+  // Results state
+  const [convertResult, setConvertResult] = useState<any>(null);
+  const [validationResult, setValidationResult] = useState<any>(null);
+  const [splitResult, setSplitResult] = useState<any>(null);
+
+  const handleConvert = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await apiClient.convertData({
+        sam2_zip_path: sam2Path,
+        output_dir: outputDir,
+        target_format: targetFormat,
+      });
+
+      setConvertResult(result);
+      setCurrentSubStep("validate");
+    } catch (err: any) {
+      setError(err.message || "Conversion failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleValidate = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const dataPath =
+        targetFormat === "llava"
+          ? `${outputDir}/llava_format.jsonl`
+          : `${outputDir}/huggingface_dataset`;
+
+      const result = await apiClient.validateData({
+        data_path: dataPath,
+        format_type: targetFormat,
+      });
+
+      setValidationResult(result);
+      setCurrentSubStep("split");
+    } catch (err: any) {
+      setError(err.message || "Validation failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSplit = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const dataPath =
+        targetFormat === "llava"
+          ? `${outputDir}/llava_format.jsonl`
+          : `${outputDir}/huggingface_dataset`;
+
+      const result = await apiClient.splitData({
+        data_path: dataPath,
+        output_dir: `${outputDir}/splits`,
+        strategy: "stratified",
+        train_ratio: 0.7,
+        val_ratio: 0.2,
+        test_ratio: 0.1,
+        random_seed: 42,
+      });
+
+      setSplitResult(result);
+      setCurrentSubStep("complete");
+    } catch (err: any) {
+      setError(err.message || "Splitting failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleComplete = () => {
+    onComplete({
+      sam2Path,
+      outputDir,
+      targetFormat,
+      convertResult,
+      validationResult,
+      splitResult,
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Upload & Convert */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+      >
+        <Card className="border-2 border-blue-200">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+                <Upload className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <CardTitle>1. Upload & Convert</CardTitle>
+                <CardDescription>Convert SAM2 export to training format</CardDescription>
+              </div>
+              {convertResult && (
+                <Badge variant="success">
+                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                  Completed
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                SAM2 Export Path
+              </label>
+              <input
+                type="text"
+                value={sam2Path}
+                onChange={(e) => setSam2Path(e.target.value)}
+                placeholder="/path/to/sam2_export.zip"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                disabled={currentSubStep !== "upload"}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Output Directory
+              </label>
+              <input
+                type="text"
+                value={outputDir}
+                onChange={(e) => setOutputDir(e.target.value)}
+                placeholder="./output"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                disabled={currentSubStep !== "upload"}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Target Format
+              </label>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setTargetFormat("llava")}
+                  disabled={currentSubStep !== "upload"}
+                  className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
+                    targetFormat === "llava"
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
+                      : "border-2 border-gray-200 hover:border-blue-300"
+                  }`}
+                >
+                  LLaVA Format
+                </button>
+                <button
+                  onClick={() => setTargetFormat("huggingface")}
+                  disabled={currentSubStep !== "upload"}
+                  className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
+                    targetFormat === "huggingface"
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
+                      : "border-2 border-gray-200 hover:border-blue-300"
+                  }`}
+                >
+                  HuggingFace Format
+                </button>
+              </div>
+            </div>
+
+            {convertResult && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="p-4 bg-green-50 border border-green-200 rounded-lg"
+              >
+                <p className="text-sm text-green-800">
+                  ✓ Converted {convertResult.num_samples} samples to {targetFormat} format
+                </p>
+              </motion.div>
+            )}
+
+            {currentSubStep === "upload" && (
+              <Button
+                onClick={handleConvert}
+                disabled={!sam2Path || loading}
+                className="w-full"
+              >
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Convert Dataset
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Validate */}
+      {currentSubStep !== "upload" && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card className="border-2 border-purple-200">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl shadow-lg">
+                  <FileCheck className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <CardTitle>2. Validate Quality</CardTitle>
+                  <CardDescription>Check dataset quality and balance</CardDescription>
+                </div>
+                {validationResult && (
+                  <Badge variant={validationResult.passed ? "success" : "warning"}>
+                    {validationResult.passed ? (
+                      <>
+                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                        Passed
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                        Warnings
+                      </>
+                    )}
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {validationResult ? (
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Errors:</span>
+                    <Badge variant={validationResult.num_errors > 0 ? "destructive" : "success"}>
+                      {validationResult.num_errors}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Warnings:</span>
+                    <Badge variant={validationResult.num_warnings > 0 ? "warning" : "success"}>
+                      {validationResult.num_warnings}
+                    </Badge>
+                  </div>
+                  {validationResult.recommendations?.length > 0 && (
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm font-medium text-blue-900 mb-2">
+                        Recommendations:
+                      </p>
+                      <ul className="text-xs text-blue-800 space-y-1">
+                        {validationResult.recommendations.map((rec: string, i: number) => (
+                          <li key={i}>• {rec}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : currentSubStep === "validate" ? (
+                <Button onClick={handleValidate} disabled={loading} className="w-full">
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Validate Dataset
+                </Button>
+              ) : null}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Split */}
+      {currentSubStep !== "upload" && currentSubStep !== "validate" && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Card className="border-2 border-green-200">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl shadow-lg">
+                  <Split className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <CardTitle>3. Split Dataset</CardTitle>
+                  <CardDescription>Divide into train/val/test sets (70/20/10)</CardDescription>
+                </div>
+                {splitResult && (
+                  <Badge variant="success">
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Completed
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {splitResult ? (
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Training samples:</span>
+                    <Badge>{splitResult.train_samples}</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Validation samples:</span>
+                    <Badge>{splitResult.val_samples}</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Test samples:</span>
+                    <Badge>{splitResult.test_samples}</Badge>
+                  </div>
+                </div>
+              ) : currentSubStep === "split" ? (
+                <Button onClick={handleSplit} disabled={loading} className="w-full">
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Split Dataset
+                </Button>
+              ) : null}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Error Display */}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="p-4 bg-red-50 border-2 border-red-200 rounded-lg flex items-start gap-3"
+        >
+          <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-medium text-red-900">Error</p>
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Navigation */}
+      <div className="flex gap-3">
+        {canGoBack && (
+          <Button variant="outline" onClick={onBack} className="flex-1">
+            Back
+          </Button>
+        )}
+        {currentSubStep === "complete" && (
+          <Button onClick={handleComplete} className="flex-1">
+            Continue to Training Config
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
