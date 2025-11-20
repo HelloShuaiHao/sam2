@@ -29,30 +29,6 @@ const styles = stylex.create({
     maxHeight: '100vh',
     backgroundColor: '#000',
   },
-  navbar: {
-    display: 'flex',
-    gap: 16,
-    padding: 12,
-    backgroundColor: '#1a1a1a',
-    borderBottom: '1px solid #333',
-  },
-  navLink: {
-    padding: '8px 16px',
-    color: '#aaa',
-    textDecoration: 'none',
-    borderRadius: 4,
-    transition: 'all 0.2s',
-    fontSize: 14,
-    fontWeight: 500,
-    ':hover': {
-      backgroundColor: '#333',
-      color: '#fff',
-    },
-  },
-  activeNavLink: {
-    backgroundColor: '#2563eb',
-    color: '#fff',
-  },
   content: {
     position: 'relative',
     flex: '1 1 0%',
@@ -82,31 +58,52 @@ export default function RootLayout() {
   return (
     <div {...stylex.props(styles.container)}>
       {/* Navigation Bar */}
-      <nav {...stylex.props(styles.navbar)}>
+      <nav style={{
+        display: 'flex',
+        gap: '16px',
+        padding: '12px',
+        backgroundColor: '#1a1a1a',
+        borderBottom: '1px solid #333'
+      }}>
         <Link
           to="/"
-          {...stylex.props(
-            styles.navLink,
-            location.pathname === '/' && styles.activeNavLink
-          )}
+          style={{
+            padding: '8px 16px',
+            color: location.pathname === '/' ? '#fff' : '#aaa',
+            backgroundColor: location.pathname === '/' ? '#2563eb' : 'transparent',
+            textDecoration: 'none',
+            borderRadius: '4px',
+            fontSize: '14px',
+            fontWeight: 500
+          }}
         >
           Video Annotation
         </Link>
         <Link
           to="/training"
-          {...stylex.props(
-            styles.navLink,
-            location.pathname === '/training' && styles.activeNavLink
-          )}
+          style={{
+            padding: '8px 16px',
+            color: location.pathname === '/training' ? '#fff' : '#aaa',
+            backgroundColor: location.pathname === '/training' ? '#2563eb' : 'transparent',
+            textDecoration: 'none',
+            borderRadius: '4px',
+            fontSize: '14px',
+            fontWeight: 500
+          }}
         >
           Training Workflow
         </Link>
         <Link
           to="/experiments"
-          {...stylex.props(
-            styles.navLink,
-            location.pathname === '/experiments' && styles.activeNavLink
-          )}
+          style={{
+            padding: '8px 16px',
+            color: location.pathname === '/experiments' ? '#fff' : '#aaa',
+            backgroundColor: location.pathname === '/experiments' ? '#2563eb' : 'transparent',
+            textDecoration: 'none',
+            borderRadius: '4px',
+            fontSize: '14px',
+            fontWeight: 500
+          }}
         >
           Experiments
         </Link>

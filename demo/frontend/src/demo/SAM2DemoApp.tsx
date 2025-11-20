@@ -23,8 +23,11 @@ import SAM2DemoPage from '@/routes/DemoPageWrapper';
 import PageNotFoundPage from '@/routes/PageNotFoundPage';
 import useSettingsContext from '@/settings/useSettingsContext';
 import {Route, Routes} from 'react-router-dom';
-import { TrainingWorkflow } from '@/training/TrainingWorkflow';
-import { ExperimentDashboard } from '@/training/ExperimentDashboard';
+import { Suspense, lazy } from 'react';
+
+// Lazy load training components
+const TrainingWorkflow = lazy(() => import('@/training/TrainingWorkflow').then(m => ({ default: m.TrainingWorkflow })));
+const ExperimentDashboard = lazy(() => import('@/training/ExperimentDashboard').then(m => ({ default: m.ExperimentDashboard })));
 
 export default function DemoAppWrapper() {
   const {settings} = useSettingsContext();
@@ -44,8 +47,22 @@ function DemoApp() {
       <Routes>
         <Route element={<RootLayout />}>
           <Route index={true} element={<SAM2DemoPage />} />
-          <Route path="/training" element={<TrainingWorkflow />} />
-          <Route path="/experiments" element={<ExperimentDashboard />} />
+          <Route
+            path="/training"
+            element={
+              <Suspense fallback={<div style={{padding: 20, color: 'white'}}>Loading Training...</div>}>
+                <TrainingWorkflow />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/experiments"
+            element={
+              <Suspense fallback={<div style={{padding: 20, color: 'white'}}>Loading Experiments...</div>}>
+                <ExperimentDashboard />
+              </Suspense>
+            }
+          />
           <Route path="*" element={<PageNotFoundPage />} />
         </Route>
       </Routes>
