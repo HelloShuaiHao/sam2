@@ -343,110 +343,96 @@ export function DataPreparationStep({
         </div>
       </div>
 
-      {/* Progress Timeline */}
-      <Card className="border-2 border-blue-200 bg-white">
-        <CardHeader>
-          <CardTitle className="text-gray-900">Processing Pipeline</CardTitle>
-          <CardDescription className="text-gray-600">
-            {currentSubStep === "complete"
-              ? "All steps completed! Ready to continue."
-              : loading || uploading
-                ? "Processing your data..."
-                : "Configure and start the pipeline"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Timeline
-            items={getTimelineItems()}
-            variant="default"
-            showTimestamps={false}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Configuration & Upload Card */}
-      {currentSubStep === "upload" && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <Card className="border-2 border-indigo-200 bg-white">
-            <CardHeader>
-              <CardTitle className="text-gray-900">Configuration</CardTitle>
-              <CardDescription className="text-gray-600">
-                Configure settings before starting the pipeline
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* File Upload */}
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
-                  Select SAM2 Export File (ZIP)
-                </label>
-                <div className="flex gap-3">
-                  <input
-                    type="file"
-                    accept=".zip"
-                    onChange={handleFileSelect}
-                    disabled={uploading || loading}
-                    className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all bg-white text-gray-900 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                  />
-                </div>
-                {uploadedFile && (
-                  <p className="mt-2 text-sm text-gray-600">
-                    Selected: {uploadedFile.name} ({(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB)
-                  </p>
-                )}
-              </div>
-
-              {/* Output Directory */}
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
-                  Output Directory (Server Path)
-                </label>
+      {/* Upload Settings Card - Always visible */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <Card className="border-2 border-indigo-200 bg-white">
+          <CardHeader>
+            <CardTitle className="text-gray-900">Upload Settings</CardTitle>
+            <CardDescription className="text-gray-600">
+              Select file and configure output settings
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* File Upload */}
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                Select SAM2 Export File (ZIP)
+              </label>
+              <div className="flex gap-3">
                 <input
-                  type="text"
-                  value={outputDir}
-                  onChange={(e) => setOutputDir(e.target.value)}
-                  placeholder="/app/output/training_data"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all bg-white text-gray-900"
-                  disabled={uploading || loading}
+                  type="file"
+                  accept=".zip"
+                  onChange={handleFileSelect}
+                  disabled={uploading || loading || currentSubStep !== "upload"}
+                  className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all bg-white text-gray-900 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                 />
-                <p className="mt-1 text-xs text-gray-500">Where processed data will be saved on the server</p>
               </div>
-
-              {/* Target Format */}
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
-                  Target Format
-                </label>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setTargetFormat("llava")}
-                    disabled={uploading || loading}
-                    className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
-                      targetFormat === "llava"
-                        ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
-                        : "border-2 border-gray-200 hover:border-blue-300 text-gray-700"
-                    }`}
-                  >
-                    LLaVA Format
-                  </button>
-                  <button
-                    onClick={() => setTargetFormat("huggingface")}
-                    disabled={uploading || loading}
-                    className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
-                      targetFormat === "huggingface"
-                        ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
-                        : "border-2 border-gray-200 hover:border-blue-300 text-gray-700"
-                    }`}
-                  >
-                    HuggingFace Format
-                  </button>
+              {uploadedFile && (
+                <p className="mt-2 text-sm text-gray-600">
+                  Selected: {uploadedFile.name} ({(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB)
+                </p>
+              )}
+              {sam2Path && !uploadedFile && (
+                <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded">
+                  <p className="text-sm text-green-800">
+                    ✓ Previously uploaded: {sam2Path}
+                  </p>
                 </div>
-              </div>
+              )}
+            </div>
 
-              {/* Start Button */}
+            {/* Output Directory */}
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                Output Directory (Server Path)
+              </label>
+              <input
+                type="text"
+                value={outputDir}
+                onChange={(e) => setOutputDir(e.target.value)}
+                placeholder="/app/output/training_data"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all bg-white text-gray-900"
+                disabled={uploading || loading || currentSubStep !== "upload"}
+              />
+              <p className="mt-1 text-xs text-gray-500">Where processed data will be saved on the server</p>
+            </div>
+
+            {/* Target Format */}
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                Target Format
+              </label>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setTargetFormat("llava")}
+                  disabled={uploading || loading || currentSubStep !== "upload"}
+                  className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
+                    targetFormat === "llava"
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
+                      : "border-2 border-gray-200 hover:border-blue-300 text-gray-700"
+                  }`}
+                >
+                  LLaVA Format
+                </button>
+                <button
+                  onClick={() => setTargetFormat("huggingface")}
+                  disabled={uploading || loading || currentSubStep !== "upload"}
+                  className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
+                    targetFormat === "huggingface"
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
+                      : "border-2 border-gray-200 hover:border-blue-300 text-gray-700"
+                  }`}
+                >
+                  HuggingFace Format
+                </button>
+              </div>
+            </div>
+
+            {/* Start Button */}
+            {currentSubStep === "upload" && (
               <Button
                 onClick={handleUpload}
                 disabled={!uploadedFile || uploading || loading}
@@ -464,10 +450,33 @@ export function DataPreparationStep({
                   </>
                 )}
               </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Progress Timeline */}
+      <Card className="border-2 border-blue-200 bg-white">
+        <CardHeader>
+          <CardTitle className="text-gray-900">Processing Pipeline</CardTitle>
+          <CardDescription className="text-gray-600">
+            {currentSubStep === "complete"
+              ? "All steps completed! Ready to continue."
+              : loading || uploading
+                ? "Processing your data..."
+                : currentSubStep === "upload"
+                  ? "Ready to start - select a file and click Start Pipeline"
+                  : "Processing in progress..."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Timeline
+            items={getTimelineItems()}
+            variant="default"
+            showTimestamps={false}
+          />
+        </CardContent>
+      </Card>
 
       {/* Results Card - shown during and after processing */}
       {currentSubStep !== "upload" && (
