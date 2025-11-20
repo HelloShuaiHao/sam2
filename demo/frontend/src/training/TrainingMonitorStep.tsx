@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Activity,
-  TrendingDown,
   Clock,
-  Cpu,
   CheckCircle2,
   XCircle,
   Loader2,
@@ -67,7 +65,7 @@ export function TrainingMonitorStep({
         config: trainingConfig,
         experiment_name: `${trainingConfig.model_name.split("/").pop()}-${new Date().getTime()}`,
         tags: trainingConfig.use_qlora ? ["qlora", "8gb"] : ["lora"],
-      });
+      }) as { job_id: string };
 
       setJobId(result.job_id);
       setStartTime(new Date());
@@ -85,7 +83,19 @@ export function TrainingMonitorStep({
     if (!jobId) return;
 
     try {
-      const statusData = await apiClient.getJobStatus(jobId);
+      const statusData = await apiClient.getJobStatus(jobId) as {
+        status: JobStatus;
+        current_epoch?: number;
+        total_epochs?: number;
+        current_step?: number;
+        total_steps?: number;
+        progress_percentage?: number;
+        eta_seconds?: number;
+        train_loss?: number | null;
+        eval_loss?: number;
+        learning_rate?: number;
+        error_message?: string;
+      };
 
       setStatus(statusData.status);
       setProgress({
@@ -97,10 +107,10 @@ export function TrainingMonitorStep({
         etaSeconds: statusData.eta_seconds || 0,
       });
 
-      if (statusData.train_loss !== null) {
+      if (statusData.train_loss !== null && statusData.train_loss !== undefined) {
         setMetrics((prev) => ({
           ...prev,
-          trainLoss: statusData.train_loss,
+          trainLoss: statusData.train_loss!,
           evalLoss: statusData.eval_loss || prev.evalLoss,
           learningRate: statusData.learning_rate || prev.learningRate,
         }));

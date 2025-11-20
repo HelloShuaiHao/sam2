@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   BarChart3,
-  TrendingDown,
   Clock,
   CheckCircle2,
   XCircle,
@@ -10,7 +9,7 @@ import {
   Trash2,
   GitCompare,
 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { apiClient } from "@/lib/api-client";
@@ -49,7 +48,7 @@ export function ExperimentDashboard() {
       const data = await apiClient.listExperiments({
         limit: 50,
         sort_by: sortBy,
-      });
+      }) as Experiment[];
       setExperiments(data);
     } catch (error) {
       console.error("Failed to load experiments:", error);
