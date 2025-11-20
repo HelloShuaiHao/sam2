@@ -19,6 +19,9 @@ RUN yarn build
 # Stage 2: Production Stage
 FROM nginx:latest
 
+# Copy custom nginx configuration for SPA routing
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
 # Copy built files from the build stage to the production image
 COPY --from=build /app/dist /usr/share/nginx/html
 
