@@ -269,11 +269,22 @@ async def split_dataset(request: SplitRequest):
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # Create split configuration
+        # Map string strategy to enum
+        strategy_map = {
+            "stratified": SplitStrategy.STRATIFIED,
+            "temporal": SplitStrategy.TEMPORAL,
+            "random": SplitStrategy.RANDOM,
+        }
+        strategy = strategy_map.get(request.strategy)
+        if not strategy:
+            raise HTTPException(status_code=400, detail=f"Unknown strategy: {request.strategy}")
+
         split_config = SplitConfig(
+            strategy=strategy,
             train_ratio=request.train_ratio,
             val_ratio=request.val_ratio,
             test_ratio=request.test_ratio,
-            random_seed=request.random_seed,
+            seed=request.random_seed,  # SplitConfig uses 'seed', not 'random_seed'
         )
 
         # Load dataset
