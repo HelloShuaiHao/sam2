@@ -23,6 +23,8 @@ import SAM2DemoPage from '@/routes/DemoPageWrapper';
 import PageNotFoundPage from '@/routes/PageNotFoundPage';
 import useSettingsContext from '@/settings/useSettingsContext';
 import {Route, Routes} from 'react-router-dom';
+import { TrainingWorkflow } from '@/training/TrainingWorkflow';
+import { ExperimentDashboard } from '@/training/ExperimentDashboard';
 
 export default function DemoAppWrapper() {
   const {settings} = useSettingsContext();
@@ -42,6 +44,8 @@ function DemoApp() {
       <Routes>
         <Route element={<RootLayout />}>
           <Route index={true} element={<SAM2DemoPage />} />
+          <Route path="/training" element={<TrainingWorkflow />} />
+          <Route path="/experiments" element={<ExperimentDashboard />} />
           <Route path="*" element={<PageNotFoundPage />} />
         </Route>
       </Routes>

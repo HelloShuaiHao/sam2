@@ -19,7 +19,7 @@ import {Cog6ToothIcon} from '@heroicons/react/24/outline';
 import stylex from '@stylexjs/stylex';
 import {Suspense} from 'react';
 import {Button, Indicator} from 'react-daisyui';
-import {Outlet} from 'react-router-dom';
+import {Outlet, Link, useLocation} from 'react-router-dom';
 
 const styles = stylex.create({
   container: {
@@ -28,6 +28,30 @@ const styles = stylex.create({
     height: '100%',
     maxHeight: '100vh',
     backgroundColor: '#000',
+  },
+  navbar: {
+    display: 'flex',
+    gap: 16,
+    padding: 12,
+    backgroundColor: '#1a1a1a',
+    borderBottom: '1px solid #333',
+  },
+  navLink: {
+    padding: '8px 16px',
+    color: '#aaa',
+    textDecoration: 'none',
+    borderRadius: 4,
+    transition: 'all 0.2s',
+    fontSize: 14,
+    fontWeight: 500,
+    ':hover': {
+      backgroundColor: '#333',
+      color: '#fff',
+    },
+  },
+  activeNavLink: {
+    backgroundColor: '#2563eb',
+    color: '#fff',
   },
   content: {
     position: 'relative',
@@ -53,9 +77,41 @@ const styles = stylex.create({
 
 export default function RootLayout() {
   const {openModal, hasChanged} = useSettingsContext();
+  const location = useLocation();
 
   return (
     <div {...stylex.props(styles.container)}>
+      {/* Navigation Bar */}
+      <nav {...stylex.props(styles.navbar)}>
+        <Link
+          to="/"
+          {...stylex.props(
+            styles.navLink,
+            location.pathname === '/' && styles.activeNavLink
+          )}
+        >
+          Video Annotation
+        </Link>
+        <Link
+          to="/training"
+          {...stylex.props(
+            styles.navLink,
+            location.pathname === '/training' && styles.activeNavLink
+          )}
+        >
+          Training Workflow
+        </Link>
+        <Link
+          to="/experiments"
+          {...stylex.props(
+            styles.navLink,
+            location.pathname === '/experiments' && styles.activeNavLink
+          )}
+        >
+          Experiments
+        </Link>
+      </nav>
+
       <div {...stylex.props(styles.content)}>
         <Suspense
           fallback={
