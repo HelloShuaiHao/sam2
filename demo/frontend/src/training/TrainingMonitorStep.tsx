@@ -319,13 +319,8 @@ export function TrainingMonitorStep({
       >
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-3">
-              <TrendingDown className="h-5 w-5 text-green-600" />
-              <div>
-                <CardTitle>Training Metrics</CardTitle>
-                <CardDescription>Loss and learning rate</CardDescription>
-              </div>
-            </div>
+            <CardTitle>Training Metrics</CardTitle>
+            <CardDescription>Loss and learning rate</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-4">
