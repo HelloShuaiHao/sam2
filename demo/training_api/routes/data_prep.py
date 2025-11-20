@@ -26,7 +26,6 @@ from training_api.models import (
 from training.core.data_converter.llava_converter import LLaVAConverter
 from training.core.data_converter.huggingface_converter import HuggingFaceConverter
 from training.core.validation.validator import Validator
-from training.core.validation.report_generator import ReportGenerator
 from training.core.data_splitter.split_config import SplitConfig, SplitStrategy
 from training.core.data_splitter.stratified_splitter import StratifiedSplitter
 from training.core.data_splitter.temporal_splitter import TemporalSplitter
@@ -167,18 +166,29 @@ async def validate_dataset(request: ValidateRequest):
         validator = Validator()
         validation_results = validator.validate(samples)
 
-        # Generate report
-        report_gen = ReportGenerator()
-        report = report_gen.generate(validation_results)
+        # Extract statistics
+        summary = validation_results.get("summary", {})
+        checks = validation_results.get("checks", [])
+
+        # Separate errors and warnings
+        errors = [c["message"] for c in checks if c["status"] == "error"]
+        warnings = [c["message"] for c in checks if c["status"] == "warning"]
+
+        # Build statistics
+        statistics = {
+            "total_samples": len(samples),
+            "total_checks": summary.get("total_checks", 0),
+            "passed_checks": summary.get("passed", 0),
+        }
 
         return ValidationReport(
-            passed=report["passed"],
-            num_errors=report["num_errors"],
-            num_warnings=report["num_warnings"],
-            errors=report["errors"],
-            warnings=report["warnings"],
-            statistics=report["statistics"],
-            recommendations=report["recommendations"],
+            passed=(validation_results["status"] == "passed"),
+            num_errors=summary.get("errors", 0),
+            num_warnings=summary.get("warnings", 0),
+            errors=errors,
+            warnings=warnings,
+            statistics=statistics,
+            recommendations=validation_results.get("recommendations", []),
         )
 
     except FileNotFoundError as e:
