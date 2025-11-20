@@ -18,7 +18,7 @@ import sys
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
 
-from routes import data_prep, training, experiments, export as export_routes
+from training_api.routes import data_prep, training, experiments, export as export_routes
 
 # Create FastAPI app
 app = FastAPI(
