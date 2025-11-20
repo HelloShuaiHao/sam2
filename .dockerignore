@@ -1,0 +1,61 @@
+# Git ignore patterns for training outputs
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.tox/
+.env
+.venv
+venv/
+ENV/
+
+# Training outputs
+demo/training/output/
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+wandb/
+tensorboard/
+
+# HuggingFace cache
+.cache/
+cache/
+huggingface/
+transformers/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
