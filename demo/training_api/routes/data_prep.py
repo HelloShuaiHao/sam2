@@ -100,17 +100,22 @@ async def convert_sam2_data(request: ConvertRequest):
 
         # Convert to target format
         warnings = []
+        output_file = None
         if request.target_format == "llava":
             converter = LLaVAConverter()
             output_path = output_dir / "llava_format"
             result = converter.convert(sam2_path, output_path)
             num_samples = result.get("total_samples", 0)
+            # LLaVA converter saves to llava_dataset.jsonl
+            output_file = str(output_path / "llava_dataset.jsonl")
 
         elif request.target_format == "huggingface":
             converter = HuggingFaceConverter()
             output_path = output_dir / "huggingface_dataset"
             result = converter.convert(sam2_path, output_path)
             num_samples = result.get("total_samples", 0)
+            # HuggingFace converter saves to directory
+            output_file = str(output_path)
 
         else:
             raise HTTPException(
@@ -119,7 +124,7 @@ async def convert_sam2_data(request: ConvertRequest):
 
         return ConvertResponse(
             success=True,
-            output_dir=str(output_dir),
+            output_dir=output_file,  # Return the actual data file/directory path
             num_samples=num_samples,
             message=f"Successfully converted {num_samples} samples to {request.target_format} format",
             warnings=warnings,
