@@ -1,4 +1,4 @@
-import { useState, Fragment } from "react";
+import { useState, Fragment, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Database,
@@ -56,13 +56,53 @@ interface WorkflowState {
   jobId?: string;
 }
 
+interface SerializableWorkflowState {
+  currentStep: number;
+  completedSteps: number[];
+  dataConfig: any;
+  trainingConfig: any;
+  jobId?: string;
+}
+
+const WORKFLOW_STORAGE_KEY = "training-workflow-state";
+
 export function TrainingWorkflow() {
-  const [state, setState] = useState<WorkflowState>({
-    currentStep: 0,
-    completedSteps: new Set(),
-    dataConfig: null,
-    trainingConfig: null,
+  const [state, setState] = useState<WorkflowState>(() => {
+    // Load persisted state on initialization
+    const savedState = localStorage.getItem(WORKFLOW_STORAGE_KEY);
+    if (savedState) {
+      try {
+        const parsed: SerializableWorkflowState = JSON.parse(savedState);
+        return {
+          currentStep: parsed.currentStep,
+          completedSteps: new Set(parsed.completedSteps),
+          dataConfig: parsed.dataConfig,
+          trainingConfig: parsed.trainingConfig,
+          jobId: parsed.jobId,
+        };
+      } catch (e) {
+        console.error("Failed to load workflow state:", e);
+      }
+    }
+    return {
+      currentStep: 0,
+      completedSteps: new Set(),
+      dataConfig: null,
+      trainingConfig: null,
+    };
   });
+
+  // Persist state to localStorage whenever it changes
+  useEffect(() => {
+    const serializableState: SerializableWorkflowState = {
+      currentStep: state.currentStep,
+      completedSteps: Array.from(state.completedSteps),
+      dataConfig: state.dataConfig,
+      trainingConfig: state.trainingConfig,
+      jobId: state.jobId,
+    };
+    localStorage.setItem(WORKFLOW_STORAGE_KEY, JSON.stringify(serializableState));
+  }, [state]);
 
   const currentStep = steps[state.currentStep];
   const CurrentStepComponent = currentStep.component;
