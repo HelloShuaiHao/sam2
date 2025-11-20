@@ -102,7 +102,7 @@ async def convert_sam2_data(request: ConvertRequest):
 
         # Parse SAM2 export
         parser = SAM2Parser()
-        sam2_data = parser.parse(str(sam2_path))
+        sam2_data = parser.parse_zip(sam2_path)
 
         # Convert to target format
         warnings = []
