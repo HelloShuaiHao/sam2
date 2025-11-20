@@ -142,29 +142,59 @@ async def validate_dataset(request: ValidateRequest):
     Returns:
         Validation report with errors, warnings, and recommendations
     """
+    import traceback
+    import logging
+
+    logger = logging.getLogger(__name__)
+
     try:
+        logger.info(f"Starting validation for path: {request.data_path}, format: {request.format_type}")
+
         # Validate input path
         data_path = Path(request.data_path)
+        logger.info(f"Resolved path: {data_path}, exists: {data_path.exists()}")
+
         if not data_path.exists():
             raise HTTPException(status_code=404, detail=f"Dataset not found: {data_path}")
 
         # Load dataset
+        samples = []
         if request.format_type == "llava":
+            logger.info(f"Loading JSONL file from {data_path}")
+
+            # Check if path is a directory or file
+            if data_path.is_dir():
+                # Look for JSONL file in directory
+                jsonl_files = list(data_path.glob("*.jsonl"))
+                if not jsonl_files:
+                    raise HTTPException(status_code=404, detail=f"No JSONL files found in {data_path}")
+                data_path = jsonl_files[0]
+                logger.info(f"Found JSONL file: {data_path}")
+
             # Load JSONL
-            samples = []
             with open(data_path, "r") as f:
-                for line in f:
-                    samples.append(json.loads(line))
+                for line_num, line in enumerate(f, 1):
+                    try:
+                        samples.append(json.loads(line))
+                    except json.JSONDecodeError as je:
+                        logger.error(f"JSON decode error at line {line_num}: {je}")
+                        raise
+
+            logger.info(f"Loaded {len(samples)} samples from JSONL")
         else:
             # Load HuggingFace dataset
+            logger.info(f"Loading HuggingFace dataset from {data_path}")
             from datasets import load_from_disk
 
             dataset = load_from_disk(str(data_path))
             samples = list(dataset)
+            logger.info(f"Loaded {len(samples)} samples from HuggingFace dataset")
 
         # Run validation
+        logger.info("Running validation...")
         validator = Validator()
         validation_results = validator.validate(samples)
+        logger.info(f"Validation complete. Status: {validation_results.get('status')}")
 
         # Extract statistics
         summary = validation_results.get("summary", {})
@@ -181,6 +211,8 @@ async def validate_dataset(request: ValidateRequest):
             "passed_checks": summary.get("passed", 0),
         }
 
+        logger.info(f"Returning validation report: {len(errors)} errors, {len(warnings)} warnings")
+
         return ValidationReport(
             passed=(validation_results["status"] == "passed"),
             num_errors=summary.get("errors", 0),
@@ -192,9 +224,14 @@ async def validate_dataset(request: ValidateRequest):
         )
 
     except FileNotFoundError as e:
+        logger.error(f"File not found: {e}")
         raise HTTPException(status_code=404, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")
+        logger.error(f"Validation failed with exception: {e}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Validation failed: {type(e).__name__}: {str(e)}\n{traceback.format_exc()}")
 
 
 @router.post("/split", response_model=SplitResponse)
