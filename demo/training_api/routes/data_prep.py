@@ -2,11 +2,13 @@
 Data preparation endpoints for SAM2 annotation conversion, validation, and splitting.
 """
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File
 from fastapi.responses import FileResponse
 import sys
 from pathlib import Path
 import json
+import shutil
+import uuid
 
 # Add parent directories to path
 sys.path.append(str(Path(__file__).parent.parent.parent))
@@ -32,6 +34,49 @@ from training.core.data_splitter.temporal_splitter import TemporalSplitter
 from training.core.data_splitter.random_splitter import RandomSplitter
 
 router = APIRouter()
+
+# Upload directory for SAM2 exports
+UPLOAD_DIR = Path("/app/uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+
+@router.post("/upload")
+async def upload_sam2_export(file: UploadFile = File(...)):
+    """
+    Upload SAM2 export ZIP file.
+
+    Args:
+        file: ZIP file containing SAM2 annotations
+
+    Returns:
+        Upload result with file path
+    """
+    try:
+        # Validate file type
+        if not file.filename.endswith('.zip'):
+            raise HTTPException(status_code=400, detail="Only ZIP files are supported")
+
+        # Generate unique filename
+        file_id = str(uuid.uuid4())[:8]
+        filename = f"{file_id}_{file.filename}"
+        file_path = UPLOAD_DIR / filename
+
+        # Save uploaded file
+        with file_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        file_size_mb = file_path.stat().st_size / (1024 * 1024)
+
+        return {
+            "success": True,
+            "file_path": str(file_path),
+            "filename": filename,
+            "file_size_mb": round(file_size_mb, 2),
+            "message": f"File uploaded successfully: {filename}"
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
 @router.post("/convert", response_model=ConvertResponse)

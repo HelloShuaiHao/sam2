@@ -32,15 +32,66 @@ export function DataPreparationStep({
 
   // Form state
   const [sam2Path, setSam2Path] = useState("");
-  const [outputDir, setOutputDir] = useState("./output");
+  const [outputDir, setOutputDir] = useState("/app/output/training_data");
   const [targetFormat, setTargetFormat] = useState<"llava" | "huggingface">("llava");
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   // Results state
   const [convertResult, setConvertResult] = useState<any>(null);
   const [validationResult, setValidationResult] = useState<any>(null);
   const [splitResult, setSplitResult] = useState<any>(null);
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.name.endsWith('.zip')) {
+        setError('Please select a ZIP file');
+        return;
+      }
+      setUploadedFile(file);
+      setError(null);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!uploadedFile) {
+      setError('Please select a file first');
+      return;
+    }
+
+    setUploading(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadedFile);
+
+      const response = await fetch('/api/training/data/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const result = await response.json();
+      setSam2Path(result.file_path);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleConvert = async () => {
+    if (!sam2Path) {
+      setError('Please upload a file first');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -166,41 +217,71 @@ export function DataPreparationStep({
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* File Upload */}
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-2">
-                SAM2 Export Path (Server)
+                1. Select SAM2 Export File (ZIP)
               </label>
-              <input
-                type="text"
-                value={sam2Path}
-                onChange={(e) => setSam2Path(e.target.value)}
-                placeholder="/data/exports/sam2_export.zip"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all bg-white text-gray-900"
-                style={{ color: '#111827' }}
-                disabled={currentSubStep !== "upload"}
-              />
-              <p className="mt-1 text-xs text-gray-500">Example: /data/exports/video_annotations.zip</p>
+              <div className="flex gap-3">
+                <input
+                  type="file"
+                  accept=".zip"
+                  onChange={handleFileSelect}
+                  disabled={currentSubStep !== "upload"}
+                  className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all bg-white text-gray-900 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+                <Button
+                  onClick={handleUpload}
+                  disabled={!uploadedFile || uploading || currentSubStep !== "upload"}
+                  className="px-6"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload
+                    </>
+                  )}
+                </Button>
+              </div>
+              {uploadedFile && (
+                <p className="mt-2 text-sm text-gray-600">
+                  Selected: {uploadedFile.name} ({(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB)
+                </p>
+              )}
+              {sam2Path && (
+                <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded">
+                  <p className="text-sm text-green-800">
+                    ✓ File uploaded: {sam2Path}
+                  </p>
+                </div>
+              )}
             </div>
 
+            {/* Output Directory */}
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-2">
-                Output Directory (Server)
+                2. Output Directory (Server Path)
               </label>
               <input
                 type="text"
                 value={outputDir}
                 onChange={(e) => setOutputDir(e.target.value)}
-                placeholder="/data/training_output"
+                placeholder="/app/output/training_data"
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all bg-white text-gray-900"
                 style={{ color: '#111827' }}
                 disabled={currentSubStep !== "upload"}
               />
-              <p className="mt-1 text-xs text-gray-500">Example: /app/output/training_data</p>
+              <p className="mt-1 text-xs text-gray-500">This is where processed data will be saved on the server</p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Target Format
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                3. Target Format
               </label>
               <div className="flex gap-3">
                 <button
@@ -240,14 +321,20 @@ export function DataPreparationStep({
               </motion.div>
             )}
 
+            {error && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-800">{error}</p>
+              </div>
+            )}
+
             {currentSubStep === "upload" && (
               <Button
                 onClick={handleConvert}
                 disabled={!sam2Path || loading}
-                className="w-full"
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3"
               >
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Convert Dataset
+                4. Convert Dataset
               </Button>
             )}
           </CardContent>
