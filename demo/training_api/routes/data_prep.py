@@ -24,9 +24,9 @@ from training_api.models import (
 from training.core.data_converter.sam2_parser import SAM2Parser
 from training.core.data_converter.llava_converter import LLaVAConverter
 from training.core.data_converter.huggingface_converter import HuggingFaceConverter
-from training.core.validation.validator import DatasetValidator
-from training.core.validation.report_generator import ValidationReportGenerator
-from training.core.data_splitter.split_config import SplitConfig
+from training.core.validation.validator import Validator
+from training.core.validation.report_generator import ReportGenerator
+from training.core.data_splitter.split_config import SplitConfig, SplitStrategy
 from training.core.data_splitter.stratified_splitter import StratifiedSplitter
 from training.core.data_splitter.temporal_splitter import TemporalSplitter
 from training.core.data_splitter.random_splitter import RandomSplitter
@@ -124,11 +124,11 @@ async def validate_dataset(request: ValidateRequest):
             samples = list(dataset)
 
         # Run validation
-        validator = DatasetValidator()
+        validator = Validator()
         validation_results = validator.validate(samples)
 
         # Generate report
-        report_gen = ValidationReportGenerator()
+        report_gen = ReportGenerator()
         report = report_gen.generate(validation_results)
 
         return ValidationReport(

@@ -274,6 +274,7 @@ class ExportFormat(str, Enum):
 
 class ExportRequest(BaseModel):
     """Request to export trained model."""
+    model_config = {"protected_namespaces": ()}
 
     job_id: str = Field(..., description="Training job ID")
     export_format: ExportFormat = ExportFormat.HUGGINGFACE
@@ -286,6 +287,7 @@ class ExportRequest(BaseModel):
 
 class ExportResponse(BaseModel):
     """Response after exporting model."""
+    model_config = {"protected_namespaces": ()}
 
     success: bool
     export_path: str
