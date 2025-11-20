@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Database,
@@ -134,7 +134,7 @@ export function TrainingWorkflow() {
                 const isAccessible = index <= state.completedSteps.size;
 
                 return (
-                  <React.Fragment key={step.id}>
+                  <Fragment key={step.id}>
                     {/* Step Button */}
                     <motion.button
                       onClick={() => goToStep(index)}
@@ -228,7 +228,7 @@ export function TrainingWorkflow() {
                         </div>
                       </div>
                     )}
-                  </React.Fragment>
+                  </Fragment>
                 );
               })}
             </div>
