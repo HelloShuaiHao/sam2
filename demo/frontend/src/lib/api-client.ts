@@ -51,7 +51,7 @@ class ApiClient {
     output_dir: string;
     target_format: "huggingface" | "llava";
   }) {
-    return this.request("/api/data/convert", {
+    return this.request("/data/convert", {
       method: "POST",
       body: JSON.stringify(data),
     });
@@ -61,7 +61,7 @@ class ApiClient {
     data_path: string;
     format_type: "huggingface" | "llava";
   }) {
-    return this.request("/api/data/validate", {
+    return this.request("/data/validate", {
       method: "POST",
       body: JSON.stringify(data),
     });
@@ -76,7 +76,7 @@ class ApiClient {
     test_ratio: number;
     random_seed: number;
   }) {
-    return this.request("/api/data/split", {
+    return this.request("/data/split", {
       method: "POST",
       body: JSON.stringify(data),
     });
@@ -88,18 +88,18 @@ class ApiClient {
     experiment_name?: string;
     tags?: string[];
   }) {
-    return this.request("/api/train/start", {
+    return this.request("/train/start", {
       method: "POST",
       body: JSON.stringify(data),
     });
   }
 
   async getJobStatus(jobId: string) {
-    return this.request(`/api/train/${jobId}/status`);
+    return this.request(`/train/${jobId}/status`);
   }
 
   async cancelJob(jobId: string) {
-    return this.request(`/api/train/${jobId}/cancel`, {
+    return this.request(`/train/${jobId}/cancel`, {
       method: "POST",
     });
   }
@@ -109,7 +109,7 @@ class ApiClient {
     if (status) params.append("status", status);
     params.append("limit", limit.toString());
 
-    return this.request(`/api/train/jobs?${params.toString()}`);
+    return this.request(`/train/jobs?${params.toString()}`);
   }
 
   // Experiment endpoints
@@ -125,31 +125,31 @@ class ApiClient {
     if (filters?.limit) params.append("limit", filters.limit.toString());
     if (filters?.sort_by) params.append("sort_by", filters.sort_by);
 
-    return this.request(`/api/experiments?${params.toString()}`);
+    return this.request(`/experiments?${params.toString()}`);
   }
 
   async getExperiment(experimentId: string) {
-    return this.request(`/api/experiments/${experimentId}`);
+    return this.request(`/experiments/${experimentId}`);
   }
 
   async compareExperiments(data: {
     experiment_ids: string[];
     metrics: string[];
   }) {
-    return this.request("/api/experiments/compare", {
+    return this.request("/experiments/compare", {
       method: "POST",
       body: JSON.stringify(data),
     });
   }
 
   async deleteExperiment(experimentId: string) {
-    return this.request(`/api/experiments/${experimentId}`, {
+    return this.request(`/experiments/${experimentId}`, {
       method: "DELETE",
     });
   }
 
   async getExperimentMetrics(experimentId: string) {
-    return this.request(`/api/experiments/${experimentId}/metrics`);
+    return this.request(`/experiments/${experimentId}/metrics`);
   }
 
   // Export endpoints
@@ -159,22 +159,22 @@ class ApiClient {
     generate_model_card?: boolean;
     merge_adapters?: boolean;
   }) {
-    return this.request(`/api/export/${jobId}`, {
+    return this.request(`/export/${jobId}`, {
       method: "POST",
       body: JSON.stringify(data),
     });
   }
 
   async getDownloadInfo(jobId: string) {
-    return this.request(`/api/export/${jobId}/download`);
+    return this.request(`/export/${jobId}/download`);
   }
 
   async listExports() {
-    return this.request("/api/export/list");
+    return this.request("/export/list");
   }
 
   async deleteExport(exportId: string) {
-    return this.request(`/api/export/${exportId}`, {
+    return this.request(`/export/${exportId}`, {
       method: "DELETE",
     });
   }
