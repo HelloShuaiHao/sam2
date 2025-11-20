@@ -116,10 +116,12 @@ export function DataPreparationStep({
     setError(null);
 
     try {
-      const dataPath =
-        targetFormat === "llava"
-          ? `${outputDir}/llava_format.jsonl`
-          : `${outputDir}/huggingface_dataset`;
+      // Use the output_dir from convert result, which contains the actual file path
+      const dataPath = convertResult?.output_dir;
+
+      if (!dataPath) {
+        throw new Error("No conversion result found. Please convert data first.");
+      }
 
       const result = await apiClient.validateData({
         data_path: dataPath,
@@ -140,10 +142,12 @@ export function DataPreparationStep({
     setError(null);
 
     try {
-      const dataPath =
-        targetFormat === "llava"
-          ? `${outputDir}/llava_format.jsonl`
-          : `${outputDir}/huggingface_dataset`;
+      // Use the output_dir from convert result
+      const dataPath = convertResult?.output_dir;
+
+      if (!dataPath) {
+        throw new Error("No conversion result found. Please convert data first.");
+      }
 
       const result = await apiClient.splitData({
         data_path: dataPath,
