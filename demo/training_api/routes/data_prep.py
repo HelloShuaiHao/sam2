@@ -23,7 +23,6 @@ from training_api.models import (
 )
 
 # Import core modules
-from training.core.data_converter.sam2_parser import SAM2Parser
 from training.core.data_converter.llava_converter import LLaVAConverter
 from training.core.data_converter.huggingface_converter import HuggingFaceConverter
 from training.core.validation.validator import Validator
@@ -100,23 +99,19 @@ async def convert_sam2_data(request: ConvertRequest):
         output_dir = Path(request.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Parse SAM2 export
-        parser = SAM2Parser()
-        sam2_data = parser.parse_zip(sam2_path)
-
         # Convert to target format
         warnings = []
         if request.target_format == "llava":
             converter = LLaVAConverter()
-            output_path = output_dir / "llava_format.jsonl"
-            converter.convert(sam2_data, str(output_path))
-            num_samples = len(sam2_data.get("annotations", []))
+            output_path = output_dir / "llava_format"
+            result = converter.convert(sam2_path, output_path)
+            num_samples = result.get("total_samples", 0)
 
         elif request.target_format == "huggingface":
             converter = HuggingFaceConverter()
             output_path = output_dir / "huggingface_dataset"
-            dataset = converter.convert(sam2_data, str(output_path))
-            num_samples = len(dataset)
+            result = converter.convert(sam2_path, output_path)
+            num_samples = result.get("total_samples", 0)
 
         else:
             raise HTTPException(
