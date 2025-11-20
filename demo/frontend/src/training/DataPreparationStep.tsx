@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   Upload,
@@ -16,6 +16,7 @@ import { Timeline, TimelineItem } from "@/components/ui/timeline";
 import { apiClient } from "@/lib/api-client";
 
 interface DataPreparationStepProps {
+  dataConfig?: any; // Previous data config from TrainingWorkflow
   onComplete: (data: any) => void;
   onBack: () => void;
   canGoBack: boolean;
@@ -23,73 +24,32 @@ interface DataPreparationStepProps {
 
 type SubStep = "upload" | "convert" | "validate" | "split" | "complete";
 
-interface DataPreparationState {
-  currentSubStep: SubStep;
-  sam2Path: string;
-  outputDir: string;
-  targetFormat: "llava" | "huggingface";
-  uploadedFile: File | null;
-  convertResult: any;
-  validationResult: any;
-  splitResult: any;
-}
-
-const STORAGE_KEY = "data-preparation-state";
-
 export function DataPreparationStep({
+  dataConfig,
   onComplete,
   onBack,
   canGoBack,
 }: DataPreparationStepProps) {
-  const [currentSubStep, setCurrentSubStep] = useState<SubStep>("upload");
+  // Initialize state from dataConfig if available (when navigating back)
+  const [currentSubStep, setCurrentSubStep] = useState<SubStep>(
+    dataConfig?.splitResult ? "complete" : "upload"
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Form state
-  const [sam2Path, setSam2Path] = useState("");
-  const [outputDir, setOutputDir] = useState("/app/output/training_data");
-  const [targetFormat, setTargetFormat] = useState<"llava" | "huggingface">("llava");
+  // Form state - initialize from dataConfig if available
+  const [sam2Path, setSam2Path] = useState(dataConfig?.sam2Path || "");
+  const [outputDir, setOutputDir] = useState(dataConfig?.outputDir || "/app/output/training_data");
+  const [targetFormat, setTargetFormat] = useState<"llava" | "huggingface">(
+    dataConfig?.targetFormat || "llava"
+  );
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  // Results state
-  const [convertResult, setConvertResult] = useState<any>(null);
-  const [validationResult, setValidationResult] = useState<any>(null);
-  const [splitResult, setSplitResult] = useState<any>(null);
-
-  // Load persisted state on mount
-  useEffect(() => {
-    const savedState = localStorage.getItem(STORAGE_KEY);
-    if (savedState) {
-      try {
-        const state: DataPreparationState = JSON.parse(savedState);
-        setCurrentSubStep(state.currentSubStep);
-        setSam2Path(state.sam2Path);
-        setOutputDir(state.outputDir);
-        setTargetFormat(state.targetFormat);
-        setConvertResult(state.convertResult);
-        setValidationResult(state.validationResult);
-        setSplitResult(state.splitResult);
-        // Note: uploadedFile cannot be persisted to localStorage
-      } catch (e) {
-        console.error("Failed to load saved state:", e);
-      }
-    }
-  }, []);
-
-  // Persist state whenever it changes
-  useEffect(() => {
-    const state = {
-      currentSubStep,
-      sam2Path,
-      outputDir,
-      targetFormat,
-      convertResult,
-      validationResult,
-      splitResult,
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [currentSubStep, sam2Path, outputDir, targetFormat, convertResult, validationResult, splitResult]);
+  // Results state - initialize from dataConfig if available
+  const [convertResult, setConvertResult] = useState<any>(dataConfig?.convertResult || null);
+  const [validationResult, setValidationResult] = useState<any>(dataConfig?.validationResult || null);
+  const [splitResult, setSplitResult] = useState<any>(dataConfig?.splitResult || null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -236,9 +196,7 @@ export function DataPreparationStep({
   };
 
   const handleComplete = () => {
-    // Clear persisted state on completion
-    localStorage.removeItem(STORAGE_KEY);
-
+    // Pass data to parent workflow (no localStorage needed)
     onComplete({
       sam2Path,
       outputDir,
@@ -251,7 +209,6 @@ export function DataPreparationStep({
 
   const handleReset = () => {
     if (window.confirm("Are you sure you want to reset? All progress will be lost.")) {
-      localStorage.removeItem(STORAGE_KEY);
       setCurrentSubStep("upload");
       setSam2Path("");
       setOutputDir("/app/output/training_data");
