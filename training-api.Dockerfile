@@ -14,20 +14,19 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the existing conda environment from host
-# This avoids downloading PyTorch again!
-# First create symlink: ln -s ../anaconda3/envs/py39-torch201-cuda118 ./conda-env
-COPY conda-env /opt/conda/envs/torch-env
+# Context is parent dir now, so path is anaconda3/envs/...
+COPY anaconda3/envs/py39-torch201-cuda118 /opt/conda/envs/torch-env
 
 # Activate environment by default
 ENV PATH=/opt/conda/envs/torch-env/bin:$PATH
 ENV CONDA_DEFAULT_ENV=torch-env
 
-# Copy training API code
-COPY demo/training_api/ /app/training_api/
-COPY demo/training/ /app/training/
+# Copy training API code (add sam2/ prefix since context is parent dir)
+COPY sam2/demo/training_api/ /app/training_api/
+COPY sam2/demo/training/ /app/training/
 
 # Install Python dependencies
-COPY demo/training_api/requirements.txt /app/
+COPY sam2/demo/training_api/requirements.txt /app/
 
 # PyTorch already in conda env, just install other packages from Aliyun
 # Fast because skipping the huge PyTorch download!
