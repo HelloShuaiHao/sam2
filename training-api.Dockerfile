@@ -1,7 +1,8 @@
 # Training API Dockerfile
 # For LLM fine-tuning pipeline
 
-FROM continuumio/miniconda3:latest
+# Use lightweight base image
+FROM ubuntu:22.04
 
 # Set working directory
 WORKDIR /app
