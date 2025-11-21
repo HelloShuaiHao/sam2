@@ -24,6 +24,8 @@ datasets>=2.14.0
 peft>=0.6.0  # For LoRA
 bitsandbytes>=0.41.0  # For QLoRA
 accelerate>=0.24.0
+sentencepiece>=0.1.99  # Required for LLaMA-based models (LLaVA)
+protobuf>=3.20.0  # Required by sentencepiece
 
 # Experiment Tracking
 tensorboard>=2.15.0
