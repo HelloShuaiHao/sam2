@@ -1,18 +1,26 @@
 # Training API Dockerfile
 # For LLM fine-tuning pipeline
 
-# Use PyTorch official image with CUDA pre-installed (saves 1-2 hours download time)
-FROM pytorch/pytorch:2.1.0-cuda11.8-cudnn8-runtime
+FROM continuumio/miniconda3:latest
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies (Python already included in base image)
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
     wget \
     curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Copy the existing conda environment from host
+# This avoids downloading PyTorch again!
+# Note: Path is relative to docker-compose context (project root)
+COPY ../anaconda3/envs/py39-torch201-cuda118 /opt/conda/envs/torch-env
+
+# Activate environment by default
+ENV PATH=/opt/conda/envs/torch-env/bin:$PATH
+ENV CONDA_DEFAULT_ENV=torch-env
 
 # Copy training API code
 COPY demo/training_api/ /app/training_api/
@@ -21,15 +29,8 @@ COPY demo/training/ /app/training/
 # Install Python dependencies
 COPY demo/training_api/requirements.txt /app/
 
-# PyTorch already installed in base image, skip it
-# Install CUDA-dependent packages from Aliyun mirror
-RUN pip install --no-cache-dir --default-timeout=1000 \
-    -i https://mirrors.aliyun.com/pypi/simple/ \
-    bitsandbytes>=0.41.0 \
-    accelerate>=0.24.0 \
-    torchvision torchaudio
-
-# Install other dependencies from Aliyun mirror
+# PyTorch already in conda env, just install other packages from Aliyun
+# Fast because skipping the huge PyTorch download!
 RUN pip install --no-cache-dir --default-timeout=1000 \
     -i https://mirrors.aliyun.com/pypi/simple/ \
     fastapi==0.104.1 \
