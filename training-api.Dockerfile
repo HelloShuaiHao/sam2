@@ -24,12 +24,38 @@ COPY demo/training/ /app/training/
 
 # Install Python dependencies
 COPY demo/training_api/requirements.txt /app/
-# Use Aliyun mirror for faster downloads in China and increase timeout
-# PyTorch alone is 900MB, needs sufficient timeout for slow networks
-RUN pip install --no-cache-dir \
+
+# Step 1: Install PyTorch with CUDA support from official source
+# Must use official PyTorch index to get CUDA-enabled version
+RUN pip install --no-cache-dir --default-timeout=1000 \
+    torch>=2.0.0 torchvision torchaudio \
+    --index-url https://download.pytorch.org/whl/cu118
+
+# Step 2: Install other dependencies from faster mirror
+# Remove torch from requirements to avoid reinstalling CPU version
+RUN pip install --no-cache-dir --default-timeout=1000 \
     --index-url https://mirrors.aliyun.com/pypi/simple/ \
-    --default-timeout=1000 \
-    -r requirements.txt
+    fastapi==0.104.1 \
+    uvicorn[standard]==0.24.0 \
+    python-multipart==0.0.6 \
+    pydantic==2.5.0 \
+    email-validator==2.1.0 \
+    python-jose[cryptography]==3.3.0 \
+    passlib[bcrypt]==1.7.4 \
+    celery==5.3.4 \
+    redis==5.0.1 \
+    transformers>=4.35.0 \
+    datasets>=2.14.0 \
+    peft>=0.6.0 \
+    bitsandbytes>=0.41.0 \
+    accelerate>=0.24.0 \
+    sentencepiece>=0.1.99 \
+    protobuf>=3.20.0 \
+    tensorboard>=2.15.0 \
+    wandb>=0.16.0 \
+    numpy>=1.24.0 \
+    pillow>=10.0.0 \
+    hf-transfer>=0.1.4
 
 # Set Python path
 ENV PYTHONPATH=/app:$PYTHONPATH
