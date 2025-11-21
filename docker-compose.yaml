@@ -73,6 +73,9 @@ services:
       # PyTorch settings
       - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True,max_split_size_mb:512
       - CUDA_VISIBLE_DEVICES=0
+      # Enable detailed error logging
+      - PYTHONFAULTHANDLER=1
+      - CUDA_LAUNCH_BLOCKING=1
       # HuggingFace settings
       - HF_HOME=/app/cache/huggingface
       - TRANSFORMERS_CACHE=/app/cache/transformers
@@ -93,5 +96,6 @@ services:
               count: 1
               capabilities: [gpu]
         limits:
-          # Limit memory to prevent OOM
-          memory: 32G
+          # Increased memory limit for LLaVA model loading
+          # QLoRA needs ~20GB for model + ~10GB for loading process
+          memory: 48G
