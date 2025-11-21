@@ -25,16 +25,22 @@ COPY demo/training/ /app/training/
 # Install Python dependencies
 COPY demo/training_api/requirements.txt /app/
 
-# Step 1: Install PyTorch with CUDA support from Tsinghua mirror
-# Using Tsinghua mirror for faster downloads in China
+# Step 1: Install PyTorch with CUDA 11.8 from Tsinghua mirror
+# Tsinghua mirror has good speeds for PyTorch in China
 RUN pip install --no-cache-dir --default-timeout=1000 \
     torch torchvision torchaudio \
     -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-# Step 2: Install other dependencies from faster mirror
-# Remove torch from requirements to avoid reinstalling CPU version
+# Step 2: Install CUDA-dependent packages from Tsinghua
+# bitsandbytes and accelerate need to be compatible with PyTorch CUDA
 RUN pip install --no-cache-dir --default-timeout=1000 \
-    --index-url https://mirrors.aliyun.com/pypi/simple/ \
+    -i https://pypi.tuna.tsinghua.edu.cn/simple \
+    bitsandbytes>=0.41.0 \
+    accelerate>=0.24.0
+
+# Step 3: Install other dependencies from Aliyun (faster for general packages)
+RUN pip install --no-cache-dir --default-timeout=1000 \
+    -i https://mirrors.aliyun.com/pypi/simple/ \
     fastapi==0.104.1 \
     uvicorn[standard]==0.24.0 \
     python-multipart==0.0.6 \
@@ -47,8 +53,6 @@ RUN pip install --no-cache-dir --default-timeout=1000 \
     transformers>=4.35.0 \
     datasets>=2.14.0 \
     peft>=0.6.0 \
-    bitsandbytes>=0.41.0 \
-    accelerate>=0.24.0 \
     sentencepiece>=0.1.99 \
     protobuf>=3.20.0 \
     tensorboard>=2.15.0 \
