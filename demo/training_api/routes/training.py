@@ -62,6 +62,17 @@ def estimate_training_time(config: StartTrainingRequest) -> float:
     return total_minutes
 
 
+def _check_cancellation(job_id: str) -> bool:
+    """Check if job has been cancelled.
+
+    Returns:
+        True if cancelled, False otherwise
+    """
+    if job_id not in _active_jobs:
+        return True
+    return _active_jobs[job_id]["status"] == JobStatus.CANCELLED
+
+
 def run_training_job(job_id: str, config: StartTrainingRequest):
     """Background function to run training job."""
     try:
@@ -157,12 +168,33 @@ def run_training_job(job_id: str, config: StartTrainingRequest):
             experiment_name=config.experiment_name
         )
 
+        # Check cancellation before expensive operations
+        if _check_cancellation(job_id):
+            print(f"[Job {job_id}] Job cancelled before starting")
+            return
+
         # Create trainer and setup model
         print(f"[Job {job_id}] Creating trainer and loading model...")
         trainer = LoRATrainer(core_config)
 
+        # Check cancellation before model download/load
+        if _check_cancellation(job_id):
+            print(f"[Job {job_id}] Job cancelled before model load")
+            return
+
         print(f"[Job {job_id}] Loading model with QLoRA settings...")
+        print(f"[Job {job_id}] Note: Model download may take 5-30 minutes on first run")
+        print(f"[Job {job_id}] You can cancel anytime - downloads will resume on retry")
+
+        # Setup model with cancellation checks
+        # Note: HuggingFace downloads have built-in retry, but we can't interrupt them
+        # The model will still download, but we'll stop immediately after
         trainer.setup()
+
+        # Check cancellation after model load
+        if _check_cancellation(job_id):
+            print(f"[Job {job_id}] Job cancelled after model load")
+            return
 
         print(f"[Job {job_id}] Model loaded successfully!")
 
@@ -189,12 +221,19 @@ def run_training_job(job_id: str, config: StartTrainingRequest):
         train_dataset = SimpleVLMDataset(config.config.train_data_path)
         eval_dataset = SimpleVLMDataset(config.config.val_data_path) if config.config.val_data_path else None
 
+        # Check cancellation before training
+        if _check_cancellation(job_id):
+            print(f"[Job {job_id}] Job cancelled before training")
+            return
+
         print(f"[Job {job_id}] Starting actual training...")
         print(f"[Job {job_id}] Train samples: {len(train_dataset)}")
         if eval_dataset:
             print(f"[Job {job_id}] Eval samples: {len(eval_dataset)}")
 
         # Run actual training
+        # Note: Once training starts, it's harder to cancel mid-epoch
+        # The HuggingFace Trainer will handle KeyboardInterrupt for clean shutdown
         result = trainer.train(train_dataset, eval_dataset)
 
         # Training completed successfully
@@ -212,14 +251,35 @@ def run_training_job(job_id: str, config: StartTrainingRequest):
         print(f"[Job {job_id}] Output saved to: {result.get('output_dir')}")
 
     except Exception as e:
-        # Training failed
-        import traceback
-        error_msg = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
-        print(f"[Job {job_id}] Training failed: {error_msg}")
+        # Check if job was cancelled (not a real failure)
+        if _check_cancellation(job_id):
+            print(f"[Job {job_id}] Job was cancelled (exception during cancellation: {str(e)})")
+            # Status already set to CANCELLED by cancel endpoint
+            if _active_jobs[job_id]["completed_at"] is None:
+                _active_jobs[job_id]["completed_at"] = datetime.now()
+        else:
+            # Training failed due to real error
+            import traceback
+            error_msg = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+            print(f"[Job {job_id}] Training failed: {error_msg}")
 
-        _active_jobs[job_id]["status"] = JobStatus.FAILED
-        _active_jobs[job_id]["error_message"] = error_msg
-        _active_jobs[job_id]["completed_at"] = datetime.now()
+            _active_jobs[job_id]["status"] = JobStatus.FAILED
+            _active_jobs[job_id]["error_message"] = error_msg
+            _active_jobs[job_id]["completed_at"] = datetime.now()
+    finally:
+        # Cleanup: Remove from active threads
+        if job_id in _job_threads:
+            print(f"[Job {job_id}] Cleaning up thread")
+            del _job_threads[job_id]
+
+        # Force GPU memory cleanup
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                print(f"[Job {job_id}] GPU cache cleared")
+        except Exception as cleanup_error:
+            print(f"[Job {job_id}] Cleanup warning: {cleanup_error}")
 
 
 @router.post("/start", response_model=StartTrainingResponse)
