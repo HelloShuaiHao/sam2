@@ -69,99 +69,156 @@ def run_training_job(job_id: str, config: StartTrainingRequest):
         _active_jobs[job_id]["status"] = JobStatus.RUNNING
         _active_jobs[job_id]["started_at"] = datetime.now()
 
-        # Convert API config to core config
-        core_config = CoreTrainingConfig(
-            # Model
-            model_name_or_path=config.config.model_name,
-            use_lora=config.config.use_lora,
-            lora_config={
-                "r": config.config.lora_rank,
-                "lora_alpha": config.config.lora_alpha,
-                "lora_dropout": config.config.lora_dropout,
-                "target_modules": ["q_proj", "v_proj", "k_proj", "o_proj"],
-            },
-            load_in_4bit=config.config.use_qlora,
-            # Training
-            num_train_epochs=config.config.num_epochs,
-            per_device_train_batch_size=config.config.batch_size,
-            gradient_accumulation_steps=config.config.gradient_accumulation_steps,
-            learning_rate=config.config.learning_rate,
-            warmup_ratio=config.config.warmup_ratio,
-            max_grad_norm=config.config.max_grad_norm,
-            # Data
-            train_data_path=config.config.train_data_path,
-            val_data_path=config.config.val_data_path,
-            max_seq_length=config.config.max_length,
-            # Hardware
-            fp16=config.config.fp16,
-            bf16=config.config.bf16,
-            # Output
-            output_dir=config.config.output_dir,
-            save_steps=config.config.save_steps,
-            eval_steps=config.config.eval_steps,
-            logging_steps=config.config.logging_steps,
-            save_total_limit=config.config.save_total_limit,
+        # Import core config modules
+        from training.core.config.training_config import (
+            ModelConfig,
+            DataConfig,
+            TrainingHyperparameters,
+            LoRAConfig as CoreLoRAConfig,
+            QuantizationConfig,
+            HardwareConfig,
+            CheckpointConfig,
+            LoggingConfig,
+            TrainingMethod,
+            MixedPrecision
         )
 
-        # Create trainer
+        # Convert API config to core config
+        # Determine training method
+        training_method = TrainingMethod.QLORA if config.config.use_qlora else (
+            TrainingMethod.LORA if config.config.use_lora else TrainingMethod.FULL
+        )
+
+        # Create LoRA config if using LoRA/QLoRA
+        lora_config = None
+        if training_method in [TrainingMethod.LORA, TrainingMethod.QLORA]:
+            lora_config = CoreLoRAConfig(
+                rank=config.config.lora_rank,
+                alpha=config.config.lora_alpha,
+                dropout=config.config.lora_dropout,
+                target_modules=["q_proj", "v_proj", "k_proj", "o_proj"]
+            )
+
+        # Create quantization config if using QLoRA
+        quantization_config = None
+        if training_method == TrainingMethod.QLORA:
+            quantization_config = QuantizationConfig(
+                load_in_4bit=True,
+                load_in_8bit=False,
+                bnb_4bit_compute_dtype="bfloat16" if config.config.bf16 else "float16",
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_use_double_quant=True
+            )
+
+        # Determine mixed precision
+        mixed_precision = MixedPrecision.BF16 if config.config.bf16 else (
+            MixedPrecision.FP16 if config.config.fp16 else MixedPrecision.NO
+        )
+
+        core_config = CoreTrainingConfig(
+            model=ModelConfig(
+                name=config.config.model_name,
+                type="llava",  # TODO: detect from model name
+                cache_dir=None
+            ),
+            data=DataConfig(
+                train_path=config.config.train_data_path,
+                val_path=config.config.val_data_path,
+                max_length=config.config.max_length,
+                image_size=336  # Default image size
+            ),
+            training=TrainingHyperparameters(
+                method=training_method,
+                learning_rate=config.config.learning_rate,
+                batch_size=config.config.batch_size,
+                gradient_accumulation_steps=config.config.gradient_accumulation_steps,
+                num_epochs=config.config.num_epochs,
+                warmup_ratio=config.config.warmup_ratio,
+                max_grad_norm=config.config.max_grad_norm,
+                lora=lora_config,
+                quantization=quantization_config
+            ),
+            hardware=HardwareConfig(
+                device="cuda",
+                mixed_precision=mixed_precision,
+                gradient_checkpointing=True,
+                num_workers=0
+            ),
+            checkpointing=CheckpointConfig(
+                save_steps=config.config.save_steps,
+                save_total_limit=config.config.save_total_limit,
+                output_dir=config.config.output_dir
+            ),
+            logging=LoggingConfig(
+                log_steps=config.config.logging_steps,
+                tensorboard_dir=f"{config.config.output_dir}/runs",
+                report_to=["tensorboard"]
+            ),
+            experiment_name=config.experiment_name
+        )
+
+        # Create trainer and setup model
+        print(f"[Job {job_id}] Creating trainer and loading model...")
         trainer = LoRATrainer(core_config)
 
-        # Define progress callback
-        def on_epoch_end(epoch, total_epochs, metrics):
-            _active_jobs[job_id]["current_epoch"] = epoch
-            _active_jobs[job_id]["total_epochs"] = total_epochs
-            _active_jobs[job_id]["train_loss"] = metrics.get("train_loss")
-            _active_jobs[job_id]["eval_loss"] = metrics.get("eval_loss")
-            _active_jobs[job_id]["learning_rate"] = metrics.get("learning_rate")
-            _active_jobs[job_id]["updated_at"] = datetime.now()
+        print(f"[Job {job_id}] Loading model with QLoRA settings...")
+        trainer.setup()
 
-            # Calculate progress
-            progress = (epoch / total_epochs) * 100
-            _active_jobs[job_id]["progress_percentage"] = progress
+        print(f"[Job {job_id}] Model loaded successfully!")
 
-        def on_step(step, total_steps):
-            _active_jobs[job_id]["current_step"] = step
-            _active_jobs[job_id]["total_steps"] = total_steps
-            _active_jobs[job_id]["updated_at"] = datetime.now()
+        # Load datasets - create simple dataset from JSONL files
+        print(f"[Job {job_id}] Loading datasets...")
+        from torch.utils.data import Dataset
+        import json
 
-        # Run training (this is a simplified version - actual implementation would use trainer)
-        # For now, simulate training progress
-        total_epochs = config.config.num_epochs
-        steps_per_epoch = 100  # Mock value
+        class SimpleVLMDataset(Dataset):
+            """Simple dataset that loads JSONL data for vision-language models."""
+            def __init__(self, jsonl_path: str):
+                self.data = []
+                with open(jsonl_path, 'r') as f:
+                    for line in f:
+                        self.data.append(json.loads(line.strip()))
 
-        for epoch in range(1, total_epochs + 1):
-            # Check if job was cancelled
-            if _active_jobs[job_id]["status"] == JobStatus.CANCELLED:
-                return
+            def __len__(self):
+                return len(self.data)
 
-            for step in range(1, steps_per_epoch + 1):
-                # Check cancellation
-                if _active_jobs[job_id]["status"] == JobStatus.CANCELLED:
-                    return
+            def __getitem__(self, idx):
+                # Return raw data item - the Trainer's data collator will handle tokenization
+                return self.data[idx]
 
-                # Simulate training step
-                time.sleep(0.1)  # Simulate computation
+        train_dataset = SimpleVLMDataset(config.config.train_data_path)
+        eval_dataset = SimpleVLMDataset(config.config.val_data_path) if config.config.val_data_path else None
 
-                # Update progress
-                on_step(step, steps_per_epoch)
+        print(f"[Job {job_id}] Starting actual training...")
+        print(f"[Job {job_id}] Train samples: {len(train_dataset)}")
+        if eval_dataset:
+            print(f"[Job {job_id}] Eval samples: {len(eval_dataset)}")
 
-            # Update epoch progress
-            mock_metrics = {
-                "train_loss": 0.5 - (epoch * 0.05),  # Decreasing loss
-                "eval_loss": 0.6 - (epoch * 0.04),
-                "learning_rate": config.config.learning_rate * (1 - epoch / total_epochs),
-            }
-            on_epoch_end(epoch, total_epochs, mock_metrics)
+        # Run actual training
+        result = trainer.train(train_dataset, eval_dataset)
 
-        # Training completed
+        # Training completed successfully
         _active_jobs[job_id]["status"] = JobStatus.COMPLETED
         _active_jobs[job_id]["completed_at"] = datetime.now()
         _active_jobs[job_id]["progress_percentage"] = 100.0
 
+        # Store final metrics
+        if "metrics" in result:
+            metrics = result["metrics"]
+            _active_jobs[job_id]["train_loss"] = metrics.get("train_loss")
+            _active_jobs[job_id]["eval_loss"] = metrics.get("eval_loss")
+
+        print(f"[Job {job_id}] Training completed successfully!")
+        print(f"[Job {job_id}] Output saved to: {result.get('output_dir')}")
+
     except Exception as e:
         # Training failed
+        import traceback
+        error_msg = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+        print(f"[Job {job_id}] Training failed: {error_msg}")
+
         _active_jobs[job_id]["status"] = JobStatus.FAILED
-        _active_jobs[job_id]["error_message"] = str(e)
+        _active_jobs[job_id]["error_message"] = error_msg
         _active_jobs[job_id]["completed_at"] = datetime.now()
 
 
