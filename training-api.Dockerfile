@@ -25,11 +25,11 @@ COPY demo/training/ /app/training/
 # Install Python dependencies
 COPY demo/training_api/requirements.txt /app/
 
-# Step 1: Install PyTorch with CUDA support from official source
-# Must use official PyTorch index to get CUDA-enabled version
+# Step 1: Install PyTorch with CUDA support from Tsinghua mirror
+# Using Tsinghua mirror for faster downloads in China
 RUN pip install --no-cache-dir --default-timeout=1000 \
-    torch>=2.0.0 torchvision torchaudio \
-    --index-url https://download.pytorch.org/whl/cu118
+    torch torchvision torchaudio \
+    -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # Step 2: Install other dependencies from faster mirror
 # Remove torch from requirements to avoid reinstalling CPU version
