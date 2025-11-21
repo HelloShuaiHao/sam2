@@ -77,6 +77,11 @@ services:
       - HF_HOME=/app/cache/huggingface
       - TRANSFORMERS_CACHE=/app/cache/transformers
       - HF_ENDPOINT=https://hf-mirror.com  # 使用国内镜像加速下载
+      - HF_HUB_ENABLE_HF_TRANSFER=1  # 启用高速下载
+      - HUGGINGFACE_HUB_CACHE=/app/cache/huggingface
+      # 增加下载超时时间
+      - REQUESTS_TIMEOUT=300
+      - HTTP_TIMEOUT=300
       # Training API settings
       - MAX_WORKERS=1
       - LOG_LEVEL=info
