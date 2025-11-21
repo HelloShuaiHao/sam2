@@ -31,7 +31,8 @@ COPY sam2/demo/training_api/requirements.txt /app/
 
 # PyTorch already in conda env, just install other packages from Aliyun
 # Fast because skipping the huge PyTorch download!
-RUN pip install --no-cache-dir --default-timeout=1000 \
+# Use full path to pip from conda env
+RUN /opt/conda/envs/torch-env/bin/pip install --no-cache-dir --default-timeout=1000 \
     -i https://mirrors.aliyun.com/pypi/simple/ \
     fastapi==0.104.1 \
     uvicorn[standard]==0.24.0 \
@@ -64,4 +65,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Run the FastAPI application
-CMD ["uvicorn", "training_api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+CMD ["/opt/conda/envs/torch-env/bin/uvicorn", "training_api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
