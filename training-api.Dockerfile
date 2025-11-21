@@ -18,11 +18,11 @@ RUN apt-get update && apt-get install -y \
 RUN ln -s /usr/bin/python3.10 /usr/bin/python
 
 # Copy training API code
-COPY sam2/demo/training_api/ /app/training_api/
-COPY sam2/demo/training/ /app/training/
+COPY demo/training_api/ /app/training_api/
+COPY demo/training/ /app/training/
 
 # Install Python dependencies
-COPY sam2/demo/training_api/requirements.txt /app/
+COPY demo/training_api/requirements.txt /app/
 
 # Step 1: Install PyTorch with CUDA from official (slow but必须)
 RUN pip install --no-cache-dir --default-timeout=3000 \
