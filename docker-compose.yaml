@@ -65,6 +65,9 @@ services:
       - ./demo/training/output/:/app/output/:rw
       # Mount checkpoints directory (writable)
       - ./checkpoints/:/app/checkpoints/:rw
+      # Mount cache directory for HuggingFace models (persistent)
+      - ./cache/huggingface/:/app/cache/huggingface/:rw
+      - ./cache/transformers/:/app/cache/transformers/:rw
     environment:
       - SERVER_ENVIRONMENT=DEV
       # PyTorch settings
@@ -73,6 +76,7 @@ services:
       # HuggingFace settings
       - HF_HOME=/app/cache/huggingface
       - TRANSFORMERS_CACHE=/app/cache/transformers
+      - HF_ENDPOINT=https://hf-mirror.com  # 使用国内镜像加速下载
       # Training API settings
       - MAX_WORKERS=1
       - LOG_LEVEL=info
