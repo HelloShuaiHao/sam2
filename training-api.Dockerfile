@@ -24,7 +24,12 @@ COPY demo/training/ /app/training/
 
 # Install Python dependencies
 COPY demo/training_api/requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
+# Use Aliyun mirror for faster downloads in China and increase timeout
+# PyTorch alone is 900MB, needs sufficient timeout for slow networks
+RUN pip install --no-cache-dir \
+    --index-url https://mirrors.aliyun.com/pypi/simple/ \
+    --default-timeout=1000 \
+    -r requirements.txt
 
 # Set Python path
 ENV PYTHONPATH=/app:$PYTHONPATH
