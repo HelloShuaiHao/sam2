@@ -102,6 +102,7 @@ class LoRATrainer(BaseTrainer):
 
         # Load base model
         logger.info("Loading base model...")
+        logger.info(f"Model name: {self.config.model.name}")
         load_kwargs = {}
         if self.config.model.cache_dir:
             load_kwargs["cache_dir"] = self.config.model.cache_dir
@@ -111,22 +112,33 @@ class LoRATrainer(BaseTrainer):
             load_kwargs["quantization_config"] = quantization_config
             load_kwargs["device_map"] = "auto"  # Required for quantization
             load_kwargs["torch_dtype"] = torch.float16  # Required for stable 4-bit loading
+            logger.info("QLoRA mode: using quantization config with device_map=auto")
         else:
             # Regular LoRA mode: use mixed precision
             load_kwargs["torch_dtype"] = torch.bfloat16 if self.config.hardware.mixed_precision.value == "bf16" else torch.float16
             load_kwargs["device_map"] = self.config.hardware.device if self.config.hardware.device == "auto" else None
             load_kwargs["trust_remote_code"] = True
+            logger.info(f"LoRA mode: dtype={load_kwargs['torch_dtype']}, device_map={load_kwargs.get('device_map')}")
 
         # Choose the appropriate model class
         if is_vision_model:
             # For LLaVA models, use the specific loader
             if "llava" in self.config.model.name.lower():
                 logger.info("Loading LLaVA model using LlavaForConditionalGeneration...")
-                from transformers import LlavaForConditionalGeneration
-                self.model = LlavaForConditionalGeneration.from_pretrained(
-                    self.config.model.name,
-                    **load_kwargs
-                )
+                logger.info(f"Load kwargs: {load_kwargs}")
+                try:
+                    from transformers import LlavaForConditionalGeneration
+                    logger.info("Starting model download/load...")
+                    self.model = LlavaForConditionalGeneration.from_pretrained(
+                        self.config.model.name,
+                        **load_kwargs
+                    )
+                    logger.info("Model loaded successfully!")
+                except Exception as e:
+                    logger.error(f"Failed to load LLaVA model: {e}")
+                    import traceback
+                    logger.error(traceback.format_exc())
+                    raise
             else:
                 # For other vision-language models
                 logger.info("Loading vision-language model using AutoModelForVision2Seq...")
