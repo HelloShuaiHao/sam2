@@ -54,8 +54,8 @@ services:
   training-api:
     image: sam2/training-api
     build:
-      context: ..  # Use parent directory as context to access anaconda3
-      dockerfile: sam2/training-api.Dockerfile
+      context: .
+      dockerfile: training-api.Dockerfile
     ports:
       - 7264:8000
     volumes:

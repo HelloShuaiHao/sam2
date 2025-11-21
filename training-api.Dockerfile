@@ -1,38 +1,36 @@
 # Training API Dockerfile
 # For LLM fine-tuning pipeline
 
-# Use lightweight base image
-FROM ubuntu:22.04
+FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install Python and system dependencies
 RUN apt-get update && apt-get install -y \
+    python3.10 \
+    python3-pip \
     git \
     wget \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the existing conda environment from host
-# Context is parent dir now, so path is anaconda3/envs/...
-COPY anaconda3/envs/py39-torch201-cuda118 /opt/conda/envs/torch-env
+RUN ln -s /usr/bin/python3.10 /usr/bin/python
 
-# Activate environment by default
-ENV PATH=/opt/conda/envs/torch-env/bin:$PATH
-ENV CONDA_DEFAULT_ENV=torch-env
-
-# Copy training API code (add sam2/ prefix since context is parent dir)
+# Copy training API code
 COPY sam2/demo/training_api/ /app/training_api/
 COPY sam2/demo/training/ /app/training/
 
 # Install Python dependencies
 COPY sam2/demo/training_api/requirements.txt /app/
 
-# PyTorch already in conda env, just install other packages from Aliyun
-# Fast because skipping the huge PyTorch download!
-# Use full path to pip from conda env
-RUN /opt/conda/envs/torch-env/bin/pip install --no-cache-dir --default-timeout=1000 \
+# Step 1: Install PyTorch with CUDA from official (slow but必须)
+RUN pip install --no-cache-dir --default-timeout=3000 \
+    torch==2.0.1 torchvision torchaudio \
+    --index-url https://download.pytorch.org/whl/cu118
+
+# Step 2: Install everything else from Aliyun (fast!)
+RUN pip install --no-cache-dir --default-timeout=1000 \
     -i https://mirrors.aliyun.com/pypi/simple/ \
     fastapi==0.104.1 \
     uvicorn[standard]==0.24.0 \
@@ -65,4 +63,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Run the FastAPI application
-CMD ["/opt/conda/envs/torch-env/bin/uvicorn", "training_api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+CMD ["uvicorn", "training_api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
