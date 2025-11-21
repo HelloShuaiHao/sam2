@@ -1,22 +1,18 @@
 # Training API Dockerfile
 # For LLM fine-tuning pipeline
 
-FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
+# Use PyTorch official image with CUDA pre-installed (saves 1-2 hours download time)
+FROM pytorch/pytorch:2.1.0-cuda11.8-cudnn8-runtime
 
 # Set working directory
 WORKDIR /app
 
-# Install Python and system dependencies
+# Install system dependencies (Python already included in base image)
 RUN apt-get update && apt-get install -y \
-    python3.10 \
-    python3-pip \
     git \
     wget \
     curl \
     && rm -rf /var/lib/apt/lists/*
-
-# Create symbolic link for python
-RUN ln -s /usr/bin/python3.10 /usr/bin/python
 
 # Copy training API code
 COPY demo/training_api/ /app/training_api/
@@ -25,20 +21,15 @@ COPY demo/training/ /app/training/
 # Install Python dependencies
 COPY demo/training_api/requirements.txt /app/
 
-# Step 1: Install PyTorch with CUDA 11.8 from Tsinghua mirror
-# Tsinghua mirror has good speeds for PyTorch in China
+# PyTorch already installed in base image, skip it
+# Install CUDA-dependent packages from Aliyun mirror
 RUN pip install --no-cache-dir --default-timeout=1000 \
-    torch torchvision torchaudio \
-    -i https://pypi.tuna.tsinghua.edu.cn/simple
-
-# Step 2: Install CUDA-dependent packages from Tsinghua
-# bitsandbytes and accelerate need to be compatible with PyTorch CUDA
-RUN pip install --no-cache-dir --default-timeout=1000 \
-    -i https://pypi.tuna.tsinghua.edu.cn/simple \
+    -i https://mirrors.aliyun.com/pypi/simple/ \
     bitsandbytes>=0.41.0 \
-    accelerate>=0.24.0
+    accelerate>=0.24.0 \
+    torchvision torchaudio
 
-# Step 3: Install other dependencies from Aliyun (faster for general packages)
+# Install other dependencies from Aliyun mirror
 RUN pip install --no-cache-dir --default-timeout=1000 \
     -i https://mirrors.aliyun.com/pypi/simple/ \
     fastapi==0.104.1 \
