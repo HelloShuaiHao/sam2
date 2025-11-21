@@ -25,7 +25,8 @@ COPY demo/training/ /app/training/
 COPY demo/training_api/requirements.txt /app/
 
 # Step 1: Install PyTorch with CUDA from official (slow but必须)
-RUN pip install --no-cache-dir --default-timeout=3000 \
+# Timeout 100000s (27.7 hours) for very slow networks
+RUN pip install --no-cache-dir --default-timeout=100000 \
     torch==2.0.1 torchvision torchaudio \
     --index-url https://download.pytorch.org/whl/cu118
 
