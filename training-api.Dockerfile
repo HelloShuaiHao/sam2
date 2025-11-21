@@ -15,8 +15,8 @@ RUN apt-get update && apt-get install -y \
 
 # Copy the existing conda environment from host
 # This avoids downloading PyTorch again!
-# Note: Path is relative to docker-compose context (project root)
-COPY ../anaconda3/envs/py39-torch201-cuda118 /opt/conda/envs/torch-env
+# First create symlink: ln -s ../anaconda3/envs/py39-torch201-cuda118 ./conda-env
+COPY conda-env /opt/conda/envs/torch-env
 
 # Activate environment by default
 ENV PATH=/opt/conda/envs/torch-env/bin:$PATH
