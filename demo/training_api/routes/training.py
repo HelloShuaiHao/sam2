@@ -35,6 +35,43 @@ _active_jobs: Dict[str, Dict] = {}
 _job_threads: Dict[str, threading.Thread] = {}
 
 
+# =============================================================================
+# Path Mapping Utility
+# =============================================================================
+
+def map_docker_path(path_str: str) -> str:
+    """Map Docker container paths to local filesystem paths.
+
+    This allows the API to work seamlessly whether running in Docker or locally.
+
+    Args:
+        path_str: Path string (may be Docker container path or local path)
+
+    Returns:
+        Mapped local filesystem path
+
+    Examples:
+        /app/output -> /path/to/project/demo/training/output
+        /data/exports -> /path/to/project/demo/data/exports
+        /local/path -> /local/path (unchanged)
+    """
+    # Get project root (4 levels up from this file)
+    project_root = Path(__file__).parent.parent.parent.parent
+
+    # Map Docker paths to local paths
+    if path_str.startswith("/app/"):
+        # /app/output -> demo/training/output
+        relative_path = path_str.replace("/app/", "demo/training/")
+        return str(project_root / relative_path)
+    elif path_str.startswith("/data/"):
+        # /data/exports -> demo/data/exports
+        relative_path = path_str.replace("/data/", "demo/data/")
+        return str(project_root / relative_path)
+    else:
+        # Already a local path
+        return path_str
+
+
 def estimate_training_time(config: StartTrainingRequest) -> float:
     """Estimate training duration in minutes."""
     # Simple heuristic based on model size, epochs, and batch size
@@ -202,11 +239,13 @@ def run_training_job(job_id: str, config: StartTrainingRequest):
         print(f"[Job {job_id}] Loading datasets...")
         from torch.utils.data import Dataset
         import json
+        from PIL import Image
 
         class SimpleVLMDataset(Dataset):
             """Simple dataset that loads JSONL data for vision-language models."""
-            def __init__(self, jsonl_path: str):
+            def __init__(self, jsonl_path: str, base_path: str = None):
                 self.data = []
+                self.base_path = Path(base_path) if base_path else Path(jsonl_path).parent
                 with open(jsonl_path, 'r') as f:
                     for line in f:
                         self.data.append(json.loads(line.strip()))
@@ -215,11 +254,149 @@ def run_training_job(job_id: str, config: StartTrainingRequest):
                 return len(self.data)
 
             def __getitem__(self, idx):
-                # Return raw data item - the Trainer's data collator will handle tokenization
-                return self.data[idx]
+                item = self.data[idx]
+
+                # Load image if path is provided
+                if 'image' in item:
+                    image_path = self.base_path / item['image']
+                    if image_path.exists():
+                        item['image'] = Image.open(image_path).convert('RGB')
+
+                # Return the item - will be processed by custom collator
+                return item
+
+        # Custom data collator for vision-language models
+        from dataclasses import dataclass
+        from typing import List, Dict, Any
+        import torch
+        from transformers import DataCollatorWithPadding
+
+        @dataclass
+        class VLMDataCollator:
+            """Custom data collator for vision-language model training."""
+            processor: Any  # AutoProcessor or tokenizer
+
+            def __call__(self, features: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
+                """Process a batch of vision-language samples.
+
+                Args:
+                    features: List of samples from dataset, each containing:
+                        - image: PIL Image or image path
+                        - conversations: List of conversation turns
+
+                Returns:
+                    Batch dictionary ready for model training
+                """
+                batch = {
+                    "input_ids": [],
+                    "attention_mask": [],
+                    "labels": [],
+                }
+
+                # Check if we have images in the batch
+                has_images = any('image' in f for f in features)
+                if has_images:
+                    batch["pixel_values"] = []
+
+                for feature in features:
+                    # Format conversation text
+                    conversations = feature.get('conversations', [])
+                    text = self._format_conversations(conversations)
+
+                    # Tokenize text
+                    if has_images and hasattr(self.processor, 'tokenizer'):
+                        # Use processor's tokenizer for vision-language models
+                        encoding = self.processor.tokenizer(
+                            text,
+                            truncation=True,
+                            max_length=2048,
+                            return_tensors="pt"
+                        )
+                    else:
+                        # Use tokenizer directly
+                        encoding = self.processor(
+                            text,
+                            truncation=True,
+                            max_length=2048,
+                            return_tensors="pt"
+                        )
+
+                    batch["input_ids"].append(encoding["input_ids"][0])
+                    batch["attention_mask"].append(encoding["attention_mask"][0])
+
+                    # Labels are the same as input_ids for causal LM
+                    batch["labels"].append(encoding["input_ids"][0].clone())
+
+                    # Process image if present
+                    if has_images and 'image' in feature:
+                        if hasattr(self.processor, 'image_processor'):
+                            image_inputs = self.processor.image_processor(
+                                feature['image'],
+                                return_tensors="pt"
+                            )
+                            batch["pixel_values"].append(image_inputs["pixel_values"][0])
+                        else:
+                            # Fallback: create dummy pixel values if image processor not available
+                            batch["pixel_values"].append(torch.zeros(3, 336, 336))
+
+                # Pad sequences to same length
+                max_len = max(len(ids) for ids in batch["input_ids"])
+                pad_token_id = self.processor.tokenizer.pad_token_id if hasattr(self.processor, 'tokenizer') else self.processor.pad_token_id
+
+                for i in range(len(batch["input_ids"])):
+                    padding_length = max_len - len(batch["input_ids"][i])
+                    if padding_length > 0:
+                        batch["input_ids"][i] = torch.cat([
+                            batch["input_ids"][i],
+                            torch.full((padding_length,), pad_token_id, dtype=torch.long)
+                        ])
+                        batch["attention_mask"][i] = torch.cat([
+                            batch["attention_mask"][i],
+                            torch.zeros(padding_length, dtype=torch.long)
+                        ])
+                        batch["labels"][i] = torch.cat([
+                            batch["labels"][i],
+                            torch.full((padding_length,), -100, dtype=torch.long)  # -100 is ignored in loss
+                        ])
+
+                # Stack into tensors
+                batch["input_ids"] = torch.stack(batch["input_ids"])
+                batch["attention_mask"] = torch.stack(batch["attention_mask"])
+                batch["labels"] = torch.stack(batch["labels"])
+
+                if has_images and len(batch["pixel_values"]) > 0:
+                    batch["pixel_values"] = torch.stack(batch["pixel_values"])
+
+                return batch
+
+            def _format_conversations(self, conversations: List[Dict]) -> str:
+                """Format conversation list into training text.
+
+                Args:
+                    conversations: List of {from: str, value: str} dicts
+
+                Returns:
+                    Formatted conversation text
+                """
+                formatted_text = ""
+                for conv in conversations:
+                    role = conv.get('from', 'human')
+                    value = conv.get('value', '')
+
+                    if role == 'human' or role == 'user':
+                        formatted_text += f"USER: {value}\n"
+                    elif role == 'gpt' or role == 'assistant':
+                        formatted_text += f"ASSISTANT: {value}\n"
+                    else:
+                        formatted_text += f"{value}\n"
+
+                return formatted_text.strip()
 
         train_dataset = SimpleVLMDataset(config.config.train_data_path)
         eval_dataset = SimpleVLMDataset(config.config.val_data_path) if config.config.val_data_path else None
+
+        # Create custom data collator
+        data_collator = VLMDataCollator(processor=trainer.tokenizer)
 
         # Check cancellation before training
         if _check_cancellation(job_id):
@@ -234,7 +411,7 @@ def run_training_job(job_id: str, config: StartTrainingRequest):
         # Run actual training
         # Note: Once training starts, it's harder to cancel mid-epoch
         # The HuggingFace Trainer will handle KeyboardInterrupt for clean shutdown
-        result = trainer.train(train_dataset, eval_dataset)
+        result = trainer.train(train_dataset, eval_dataset, data_collator=data_collator)
 
         # Training completed successfully
         _active_jobs[job_id]["status"] = JobStatus.COMPLETED
@@ -295,6 +472,12 @@ async def start_training(request: StartTrainingRequest, background_tasks: Backgr
         Job ID and estimated duration
     """
     try:
+        # Map Docker paths to local paths
+        request.config.train_data_path = map_docker_path(request.config.train_data_path)
+        if request.config.val_data_path:
+            request.config.val_data_path = map_docker_path(request.config.val_data_path)
+        request.config.output_dir = map_docker_path(request.config.output_dir)
+
         # Validate paths
         train_path = Path(request.config.train_data_path)
         if not train_path.exists():

@@ -128,26 +128,7 @@ async def convert_sam2_data(request: ConvertRequest):
         Conversion result with statistics
     """
     try:
-        # Path mapping: Convert Docker container paths to local paths
-        def map_docker_path(path_str: str) -> str:
-            """Map Docker container paths to local filesystem paths."""
-            # Get project root (4 levels up from this file)
-            project_root = Path(__file__).parent.parent.parent.parent
-
-            # Map Docker paths to local paths
-            if path_str.startswith("/app/"):
-                # /app/output -> demo/training/output
-                relative_path = path_str.replace("/app/", "demo/training/")
-                return str(project_root / relative_path)
-            elif path_str.startswith("/data/"):
-                # /data/exports -> demo/data/exports
-                relative_path = path_str.replace("/data/", "demo/data/")
-                return str(project_root / relative_path)
-            else:
-                # Already a local path
-                return path_str
-
-        # Map paths
+        # Map Docker paths to local paths
         sam2_path_str = map_docker_path(request.sam2_zip_path)
         output_dir_str = map_docker_path(request.output_dir)
 
@@ -217,8 +198,11 @@ async def validate_dataset(request: ValidateRequest):
     try:
         logger.info(f"Starting validation for path: {request.data_path}, format: {request.format_type}")
 
+        # Map Docker paths to local paths
+        data_path_str = map_docker_path(request.data_path)
+
         # Validate input path
-        data_path = Path(request.data_path)
+        data_path = Path(data_path_str)
         logger.info(f"Resolved path: {data_path}, exists: {data_path.exists()}")
 
         if not data_path.exists():
@@ -313,8 +297,12 @@ async def split_dataset(request: SplitRequest):
         Split result with paths and sample counts
     """
     try:
+        # Map Docker paths to local paths
+        data_path_str = map_docker_path(request.data_path)
+        output_dir_str = map_docker_path(request.output_dir)
+
         # Validate input path
-        data_path = Path(request.data_path)
+        data_path = Path(data_path_str)
         if not data_path.exists():
             raise HTTPException(status_code=404, detail=f"Dataset not found: {data_path}")
 
@@ -327,7 +315,7 @@ async def split_dataset(request: SplitRequest):
             )
 
         # Create output directory
-        output_dir = Path(request.output_dir)
+        output_dir = Path(output_dir_str)
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # Create split configuration

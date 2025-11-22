@@ -192,12 +192,13 @@ class LoRATrainer(BaseTrainer):
             f"Trainable%: {100 * trainable_params / all_params:.2f}%"
         )
 
-    def train(self, train_dataset: Any, eval_dataset: Optional[Any] = None) -> Dict[str, Any]:
+    def train(self, train_dataset: Any, eval_dataset: Optional[Any] = None, data_collator: Optional[Any] = None) -> Dict[str, Any]:
         """Execute LoRA training.
 
         Args:
             train_dataset: Training dataset
             eval_dataset: Optional evaluation dataset
+            data_collator: Optional custom data collator for processing batches
 
         Returns:
             Training results
@@ -217,6 +218,7 @@ class LoRATrainer(BaseTrainer):
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
             tokenizer=self.tokenizer,
+            data_collator=data_collator,
         )
 
         # Start training
