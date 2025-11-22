@@ -10,3 +10,11 @@ outputs/*
 checkpoints/*.pt
 demo/backend/checkpoints/*.pt
 demo/data/exports/*
+
+# Training output and cache
+demo/training/output/training_data/
+demo/training/output/llava/
+demo/training/output/splits/
+demo/training/output/huggingface/
+demo/uploads/
+cache/

@@ -34,7 +34,9 @@ from training.core.data_splitter.random_splitter import RandomSplitter
 router = APIRouter()
 
 # Upload directory for SAM2 exports
-UPLOAD_DIR = Path("/app/uploads")
+# Use environment variable or default to project-relative path
+import os
+UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", str(Path(__file__).parent.parent.parent.parent / "demo" / "uploads")))
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 

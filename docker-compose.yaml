@@ -51,8 +51,19 @@ services:
               count: 1
               capabilities: [gpu]
 
+  # ============================================================================
+  # Training API - 使用 profile 控制，默认不启动
+  # ============================================================================
+  # 推荐使用本地启动方式（更快，无需下载 PyTorch）：
+  #   ./start_training_api.sh
+  #
+  # 如需通过 Docker 启动（会下载 PyTorch，很慢）：
+  #   docker compose --profile training up
+  # ============================================================================
   training-api:
     image: sam2/training-api
+    profiles:
+      - training  # 只有指定 --profile training 时才启动
     build:
       context: .
       dockerfile: training-api.Dockerfile
