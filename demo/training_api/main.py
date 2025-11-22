@@ -70,12 +70,20 @@ app.include_router(export_routes.router, prefix="/api/export", tags=["Export"])
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     """Handle uncaught exceptions."""
+    import traceback
+    import logging
+
+    logger = logging.getLogger("uvicorn.error")
+    logger.error(f"Unhandled exception: {exc}")
+    logger.error(traceback.format_exc())
+
     return JSONResponse(
         status_code=500,
         content={
             "error": "Internal server error",
             "message": str(exc),
             "type": type(exc).__name__,
+            "traceback": traceback.format_exc() if app.debug else None,
         },
     )
 

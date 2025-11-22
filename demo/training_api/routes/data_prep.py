@@ -40,6 +40,43 @@ UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", str(Path(__file__).parent.parent.paren
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
+# =============================================================================
+# Path Mapping Utility
+# =============================================================================
+
+def map_docker_path(path_str: str) -> str:
+    """Map Docker container paths to local filesystem paths.
+
+    This allows the API to work seamlessly whether running in Docker or locally.
+
+    Args:
+        path_str: Path string (may be Docker container path or local path)
+
+    Returns:
+        Mapped local filesystem path
+
+    Examples:
+        /app/output -> /path/to/project/demo/training/output
+        /data/exports -> /path/to/project/demo/data/exports
+        /local/path -> /local/path (unchanged)
+    """
+    # Get project root (4 levels up from this file)
+    project_root = Path(__file__).parent.parent.parent.parent
+
+    # Map Docker paths to local paths
+    if path_str.startswith("/app/"):
+        # /app/output -> demo/training/output
+        relative_path = path_str.replace("/app/", "demo/training/")
+        return str(project_root / relative_path)
+    elif path_str.startswith("/data/"):
+        # /data/exports -> demo/data/exports
+        relative_path = path_str.replace("/data/", "demo/data/")
+        return str(project_root / relative_path)
+    else:
+        # Already a local path
+        return path_str
+
+
 @router.post("/upload")
 async def upload_sam2_export(file: UploadFile = File(...)):
     """
@@ -91,13 +128,36 @@ async def convert_sam2_data(request: ConvertRequest):
         Conversion result with statistics
     """
     try:
+        # Path mapping: Convert Docker container paths to local paths
+        def map_docker_path(path_str: str) -> str:
+            """Map Docker container paths to local filesystem paths."""
+            # Get project root (4 levels up from this file)
+            project_root = Path(__file__).parent.parent.parent.parent
+
+            # Map Docker paths to local paths
+            if path_str.startswith("/app/"):
+                # /app/output -> demo/training/output
+                relative_path = path_str.replace("/app/", "demo/training/")
+                return str(project_root / relative_path)
+            elif path_str.startswith("/data/"):
+                # /data/exports -> demo/data/exports
+                relative_path = path_str.replace("/data/", "demo/data/")
+                return str(project_root / relative_path)
+            else:
+                # Already a local path
+                return path_str
+
+        # Map paths
+        sam2_path_str = map_docker_path(request.sam2_zip_path)
+        output_dir_str = map_docker_path(request.output_dir)
+
         # Validate input path
-        sam2_path = Path(request.sam2_zip_path)
+        sam2_path = Path(sam2_path_str)
         if not sam2_path.exists():
             raise HTTPException(status_code=404, detail=f"SAM2 export not found: {sam2_path}")
 
         # Create output directory
-        output_dir = Path(request.output_dir)
+        output_dir = Path(output_dir_str)
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # Convert to target format
