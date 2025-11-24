@@ -80,6 +80,21 @@ class LoRATrainer(BaseTrainer):
             if hasattr(self.tokenizer, 'eos_token'):
                 self.tokenizer.pad_token = self.tokenizer.eos_token
 
+        # Add <image> as a special token for LLaVA models
+        if is_vision_model and "llava" in self.config.model.name.lower():
+            logger.info("Adding <image> as a special token for LLaVA...")
+            # Check if <image> is already in the vocabulary
+            if "<image>" not in self.tokenizer.get_vocab():
+                # Add the special token
+                num_new_tokens = self.tokenizer.add_tokens(["<image>"], special_tokens=True)
+                logger.info(f"Added {num_new_tokens} new tokens (<image>) to tokenizer")
+                # Store the image token ID for later use
+                self.image_token_id = self.tokenizer.convert_tokens_to_ids("<image>")
+                logger.info(f"Image token ID: {self.image_token_id}")
+            else:
+                self.image_token_id = self.tokenizer.convert_tokens_to_ids("<image>")
+                logger.info(f"<image> already in vocabulary with ID: {self.image_token_id}")
+
         # Prepare quantization config for QLoRA
         quantization_config = None
         if self.config.training.method == TrainingMethod.QLORA:
@@ -156,6 +171,24 @@ class LoRATrainer(BaseTrainer):
                 self.config.model.name,
                 **load_kwargs
             )
+
+        # Resize model embeddings if we added new tokens
+        if is_vision_model and "llava" in self.config.model.name.lower() and hasattr(self, 'image_token_id'):
+            logger.info("Resizing model embeddings for new tokens...")
+            # Get current embedding size
+            old_embed_size = self.model.get_input_embeddings().weight.shape[0]
+            new_embed_size = len(self.tokenizer)
+
+            if old_embed_size != new_embed_size:
+                self.model.resize_token_embeddings(new_embed_size)
+                logger.info(f"Resized embeddings from {old_embed_size} to {new_embed_size}")
+
+            # Set the image token index in the model config
+            if hasattr(self.model.config, 'image_token_index'):
+                self.model.config.image_token_index = self.image_token_id
+                logger.info(f"Set model.config.image_token_index = {self.image_token_id}")
+            else:
+                logger.warning("Model config doesn't have image_token_index attribute")
 
         # Prepare model for k-bit training (QLoRA specific)
         if self.config.training.method == TrainingMethod.QLORA:

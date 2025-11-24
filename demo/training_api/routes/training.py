@@ -257,9 +257,12 @@ def run_training_job(job_id: str, config: StartTrainingRequest):
                 item = self.data[idx]
 
                 # Load image if path is provided
-                if 'image' in item:
+                # Check if it's a string path (not already loaded as Image)
+                if 'image' in item and isinstance(item['image'], str):
                     image_path = self.base_path / item['image']
                     if image_path.exists():
+                        # Create a copy to avoid modifying the original data
+                        item = item.copy()
                         item['image'] = Image.open(image_path).convert('RGB')
 
                 # Return the item - will be processed by custom collator
@@ -277,16 +280,9 @@ def run_training_job(job_id: str, config: StartTrainingRequest):
             processor: Any  # AutoProcessor or tokenizer
 
             def __call__(self, features: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
-                """Process a batch of vision-language samples.
+                """Process a batch of vision-language samples."""
+                print(f"[DataCollator] Processing batch of {len(features)} samples...")
 
-                Args:
-                    features: List of samples from dataset, each containing:
-                        - image: PIL Image or image path
-                        - conversations: List of conversation turns
-
-                Returns:
-                    Batch dictionary ready for model training
-                """
                 batch = {
                     "input_ids": [],
                     "attention_mask": [],
@@ -294,54 +290,83 @@ def run_training_job(job_id: str, config: StartTrainingRequest):
                 }
 
                 # Check if we have images in the batch
-                has_images = any('image' in f for f in features)
+                has_images = any('image' in f and f['image'] is not None for f in features)
+                print(f"[DataCollator] Has images: {has_images}")
                 if has_images:
                     batch["pixel_values"] = []
 
-                for feature in features:
+                for idx, feature in enumerate(features):
+                    print(f"[DataCollator] Processing sample {idx+1}/{len(features)}")
+
+                    # Check if this sample has an image
+                    sample_has_image = 'image' in feature and feature['image'] is not None
+
                     # Format conversation text
                     conversations = feature.get('conversations', [])
-                    text = self._format_conversations(conversations)
+                    text = self._format_conversations(conversations, has_image=sample_has_image)
+                    print(f"[DataCollator]   Text length: {len(text)} chars, has_image: {sample_has_image}")
+                    print(f"[DataCollator]   DEBUG: Formatted text: {text[:200]}...")
 
                     # Tokenize text
-                    if has_images and hasattr(self.processor, 'tokenizer'):
-                        # Use processor's tokenizer for vision-language models
-                        encoding = self.processor.tokenizer(
-                            text,
-                            truncation=True,
-                            max_length=2048,
-                            return_tensors="pt"
-                        )
-                    else:
-                        # Use tokenizer directly
-                        encoding = self.processor(
-                            text,
-                            truncation=True,
-                            max_length=2048,
-                            return_tensors="pt"
-                        )
+                    try:
+                        if has_images and hasattr(self.processor, 'tokenizer'):
+                            encoding = self.processor.tokenizer(
+                                text,
+                                truncation=True,
+                                max_length=2048,
+                                return_tensors="pt"
+                            )
+                        else:
+                            encoding = self.processor(
+                                text,
+                                truncation=True,
+                                max_length=2048,
+                                return_tensors="pt"
+                            )
+                        print(f"[DataCollator]   Token count: {len(encoding['input_ids'][0])}")
+
+                        # Debug: Check if there are image tokens in the input_ids
+                        input_ids_list = encoding['input_ids'][0].tolist()
+                        # LLaVA typically uses token ID 32000 for <image>, but let's check
+                        print(f"[DataCollator]   DEBUG: First 20 token IDs: {input_ids_list[:20]}")
+                        # Check if we have the <image> string as tokens
+                        if hasattr(self.processor, 'tokenizer'):
+                            image_token_test = self.processor.tokenizer("<image>", add_special_tokens=False)
+                            print(f"[DataCollator]   DEBUG: <image> tokenizes to: {image_token_test}")
+
+                    except Exception as e:
+                        print(f"[DataCollator]   ERROR tokenizing: {e}")
+                        raise
 
                     batch["input_ids"].append(encoding["input_ids"][0])
                     batch["attention_mask"].append(encoding["attention_mask"][0])
-
-                    # Labels are the same as input_ids for causal LM
                     batch["labels"].append(encoding["input_ids"][0].clone())
 
                     # Process image if present
-                    if has_images and 'image' in feature:
-                        if hasattr(self.processor, 'image_processor'):
-                            image_inputs = self.processor.image_processor(
-                                feature['image'],
-                                return_tensors="pt"
-                            )
-                            batch["pixel_values"].append(image_inputs["pixel_values"][0])
-                        else:
-                            # Fallback: create dummy pixel values if image processor not available
+                    if has_images and 'image' in feature and feature['image'] is not None:
+                        try:
+                            if hasattr(self.processor, 'image_processor'):
+                                image_inputs = self.processor.image_processor(
+                                    feature['image'],
+                                    return_tensors="pt"
+                                )
+                                batch["pixel_values"].append(image_inputs["pixel_values"][0])
+                                print(f"[DataCollator]   Image processed successfully")
+                            else:
+                                batch["pixel_values"].append(torch.zeros(3, 336, 336))
+                                print(f"[DataCollator]   Using dummy image (no image_processor)")
+                        except Exception as e:
+                            print(f"[DataCollator]   ERROR processing image: {e}")
                             batch["pixel_values"].append(torch.zeros(3, 336, 336))
 
-                # Pad sequences to same length
+                # Pad sequences
+                print(f"[DataCollator] Padding sequences...")
                 max_len = max(len(ids) for ids in batch["input_ids"])
                 pad_token_id = self.processor.tokenizer.pad_token_id if hasattr(self.processor, 'tokenizer') else self.processor.pad_token_id
+
+                if pad_token_id is None:
+                    pad_token_id = 0
+                    print(f"[DataCollator] Warning: pad_token_id is None, using 0")
 
                 for i in range(len(batch["input_ids"])):
                     padding_length = max_len - len(batch["input_ids"][i])
@@ -356,7 +381,7 @@ def run_training_job(job_id: str, config: StartTrainingRequest):
                         ])
                         batch["labels"][i] = torch.cat([
                             batch["labels"][i],
-                            torch.full((padding_length,), -100, dtype=torch.long)  # -100 is ignored in loss
+                            torch.full((padding_length,), -100, dtype=torch.long)
                         ])
 
                 # Stack into tensors
@@ -367,21 +392,31 @@ def run_training_job(job_id: str, config: StartTrainingRequest):
                 if has_images and len(batch["pixel_values"]) > 0:
                     batch["pixel_values"] = torch.stack(batch["pixel_values"])
 
+                print(f"[DataCollator] Batch ready: input_ids shape={batch['input_ids'].shape}")
                 return batch
 
-            def _format_conversations(self, conversations: List[Dict]) -> str:
+            def _format_conversations(self, conversations: List[Dict], has_image: bool = False) -> str:
                 """Format conversation list into training text.
 
                 Args:
                     conversations: List of {from: str, value: str} dicts
+                    has_image: Whether the sample contains an image
 
                 Returns:
-                    Formatted conversation text
+                    Formatted conversation text with image token if needed
                 """
                 formatted_text = ""
+
+                # Add image token at the beginning for LLaVA models if image is present
+                if has_image:
+                    formatted_text = "<image>\n"
+
                 for conv in conversations:
                     role = conv.get('from', 'human')
                     value = conv.get('value', '')
+
+                    # Remove <image> placeholder from value if it exists (we already added it)
+                    value = value.replace('<image>', '').strip()
 
                     if role == 'human' or role == 'user':
                         formatted_text += f"USER: {value}\n"
@@ -396,7 +431,9 @@ def run_training_job(job_id: str, config: StartTrainingRequest):
         eval_dataset = SimpleVLMDataset(config.config.val_data_path) if config.config.val_data_path else None
 
         # Create custom data collator
+        print(f"[Job {job_id}] Creating custom data collator...")
         data_collator = VLMDataCollator(processor=trainer.tokenizer)
+        print(f"[Job {job_id}] Data collator created successfully")
 
         # Check cancellation before training
         if _check_cancellation(job_id):
@@ -408,6 +445,20 @@ def run_training_job(job_id: str, config: StartTrainingRequest):
         if eval_dataset:
             print(f"[Job {job_id}] Eval samples: {len(eval_dataset)}")
 
+        # Test the collator with first batch
+        print(f"[Job {job_id}] Testing data collator with first sample...")
+        try:
+            test_sample = train_dataset[0]
+            print(f"[Job {job_id}] Sample keys: {test_sample.keys()}")
+            test_batch = data_collator([test_sample])
+            print(f"[Job {job_id}] Test batch successful! Shapes: {test_batch['input_ids'].shape}")
+        except Exception as e:
+            print(f"[Job {job_id}] ERROR in test collator: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
+
+        print(f"[Job {job_id}] Calling trainer.train()...")
         # Run actual training
         # Note: Once training starts, it's harder to cancel mid-epoch
         # The HuggingFace Trainer will handle KeyboardInterrupt for clean shutdown
