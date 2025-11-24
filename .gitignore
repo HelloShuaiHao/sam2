@@ -16,5 +16,6 @@ demo/training/output/training_data/
 demo/training/output/llava/
 demo/training/output/splits/
 demo/training/output/huggingface/
+demo/training/output/checkpoints/
 demo/uploads/
 cache/
