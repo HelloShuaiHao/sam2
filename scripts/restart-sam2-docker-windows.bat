@@ -1,122 +1,192 @@
 @echo off
 REM ##############################################################################
-REM SAM2 Demo - Docker Restart Script with GPU Memory Cleanup (Windows)
+REM SAM2 Demo - Docker Restart (FIXED FOR CHINESE PATHS)
 REM
-REM This script stops, rebuilds, and restarts the SAM2 Docker containers
-REM with the latest code changes (including GPU memory leak fixes)
-REM
-REM Usage:
-REM   Run from Command Prompt in the sam2 directory:
-REM   restart-sam2-docker-windows.bat
+REM This version handles Chinese characters in paths correctly
 REM ##############################################################################
 
-setlocal
+REM IMPORTANT: Save this file as ANSI/GBK encoding, NOT UTF-8!
 
+REM Change to system default code page for Chinese
+chcp 936 >nul 2>&1
+
+REM Create log file using a safe English-only path
+set LOG_FILE=%TEMP%\sam2-docker-restart-debug.log
+
+REM Clear previous log
+echo. > "%LOG_FILE%" 2>&1
+
+REM Log basic info
+echo [DEBUG] Script started at %DATE% %TIME% >> "%LOG_FILE%" 2>&1
+echo [DEBUG] Script path: %~dp0 >> "%LOG_FILE%" 2>&1
+echo [DEBUG] Current directory: %CD% >> "%LOG_FILE%" 2>&1
+echo. >> "%LOG_FILE%" 2>&1
+
+REM Show on console
 echo.
 echo ==========================================
 echo   SAM2 Docker - Restart ^& Rebuild
 echo ==========================================
 echo.
-
-REM Check if docker-compose.yaml exists
-if not exist "docker-compose.yaml" (
-    echo [ERROR] docker-compose.yaml not found!
-    echo Please run this script from the sam2 directory.
-    pause
-    exit /b 1
-)
-
-REM Step 1: Stop all containers
-echo Step 1/4: Stopping all containers...
-docker compose down
-if errorlevel 1 (
-    echo [ERROR] Failed to stop containers!
-    pause
-    exit /b 1
-)
-echo [OK] Containers stopped
+echo Log file: %LOG_FILE%
 echo.
 
-REM Wait for containers to fully stop
-timeout /t 3 /nobreak >nul
+setlocal EnableDelayedExpansion
 
-REM Step 2: Show current GPU memory usage
-echo Current GPU Memory Status:
-where nvidia-smi >nul 2>nul
-if %errorlevel% equ 0 (
+REM Check if docker-compose.yaml exists
+echo Checking for docker-compose.yaml...
+echo [DEBUG] Checking for docker-compose.yaml... >> "%LOG_FILE%" 2>&1
+
+if not exist "docker-compose.yaml" (
+    echo [ERROR] docker-compose.yaml not found! >> "%LOG_FILE%" 2>&1
+    echo [DEBUG] Current dir: %CD% >> "%LOG_FILE%" 2>&1
+    echo.
+    echo [ERROR] docker-compose.yaml not found!
+    echo Please run from the sam2 directory.
+    echo.
+    echo Current: %CD%
+    echo.
+    pause
+    exit /b 1
+)
+echo [DEBUG] Found docker-compose.yaml >> "%LOG_FILE%" 2>&1
+echo [OK] Found docker-compose.yaml
+echo.
+
+REM Detect Docker Compose
+echo Detecting Docker...
+echo [DEBUG] Detecting Docker Compose... >> "%LOG_FILE%" 2>&1
+
+set DOCKER_COMPOSE_CMD=
+
+docker compose version >nul 2>&1
+if !errorlevel! equ 0 (
+    set DOCKER_COMPOSE_CMD=docker compose
+    echo [DEBUG] Found V2 >> "%LOG_FILE%" 2>&1
+    echo [OK] Found Docker Compose V2
+    goto :docker_found
+)
+
+echo [DEBUG] Trying V1... >> "%LOG_FILE%" 2>&1
+docker-compose version >nul 2>&1
+if !errorlevel! equ 0 (
+    set DOCKER_COMPOSE_CMD=docker-compose
+    echo [DEBUG] Found V1 >> "%LOG_FILE%" 2>&1
+    echo [OK] Found Docker Compose V1
+    goto :docker_found
+)
+
+echo [ERROR] Docker Compose not found! >> "%LOG_FILE%" 2>&1
+echo.
+echo [ERROR] Docker Compose not installed!
+echo.
+echo Install from: https://www.docker.com/products/docker-desktop/
+echo.
+pause
+exit /b 1
+
+:docker_found
+echo [DEBUG] Using: !DOCKER_COMPOSE_CMD! >> "%LOG_FILE%" 2>&1
+echo.
+
+REM Stop containers
+echo Step 1/4: Stopping containers...
+echo [DEBUG] Stopping... >> "%LOG_FILE%" 2>&1
+
+!DOCKER_COMPOSE_CMD! down >> "%LOG_FILE%" 2>&1
+if !errorlevel! neq 0 (
+    echo [ERROR] Stop failed: !errorlevel! >> "%LOG_FILE%" 2>&1
+    echo [ERROR] Failed to stop!
+    echo.
+    pause
+    exit /b 1
+)
+echo [DEBUG] Stopped >> "%LOG_FILE%" 2>&1
+echo [OK] Stopped
+echo.
+
+timeout /t 3 /nobreak >nul 2>&1
+
+REM Check GPU
+echo GPU Status:
+echo [DEBUG] Checking GPU... >> "%LOG_FILE%" 2>&1
+where nvidia-smi >nul 2>&1
+if !errorlevel! equ 0 (
+    nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader,nounits >> "%LOG_FILE%" 2>&1
     nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader,nounits
 ) else (
+    echo [DEBUG] nvidia-smi not found >> "%LOG_FILE%" 2>&1
     echo nvidia-smi not available
 )
 echo.
 
-REM Step 3: Rebuild backend image with latest code
-echo Step 2/4: Rebuilding backend image with GPU memory leak fixes...
-echo This includes the following fixes:
-echo   * Session close cleanup (predictor.py)
-echo   * Reset state GPU cache clearing (sam2_video_predictor.py)
-echo   * Propagation completion cleanup
-echo   * Frame output tensor cleanup
-echo   * Auto-close old sessions before starting new ones
+REM Rebuild backend
+echo Step 2/4: Rebuilding backend...
+echo [DEBUG] Building... >> "%LOG_FILE%" 2>&1
+echo This may take several minutes...
 echo.
 
-docker compose build backend
-if errorlevel 1 (
-    echo [ERROR] Failed to rebuild backend!
+!DOCKER_COMPOSE_CMD! build backend >> "%LOG_FILE%" 2>&1
+if !errorlevel! neq 0 (
+    echo [ERROR] Build failed: !errorlevel! >> "%LOG_FILE%" 2>&1
+    echo [ERROR] Failed to build!
+    echo.
     pause
     exit /b 1
 )
-echo [OK] Backend rebuilt with memory leak fixes
+echo [DEBUG] Built >> "%LOG_FILE%" 2>&1
+echo [OK] Backend rebuilt
 echo.
 
-REM Step 4: Start all services
-echo Step 3/4: Starting all services...
-docker compose up -d
-if errorlevel 1 (
-    echo [ERROR] Failed to start services!
+REM Start services
+echo Step 3/4: Starting services...
+echo [DEBUG] Starting... >> "%LOG_FILE%" 2>&1
+
+!DOCKER_COMPOSE_CMD! up -d >> "%LOG_FILE%" 2>&1
+if !errorlevel! neq 0 (
+    echo [ERROR] Start failed: !errorlevel! >> "%LOG_FILE%" 2>&1
+    echo [ERROR] Failed to start!
+    echo.
     pause
     exit /b 1
 )
+echo [DEBUG] Started >> "%LOG_FILE%" 2>&1
 echo [OK] Services started
 echo.
 
-REM Wait for services to initialize
-echo Waiting for services to initialize...
-timeout /t 5 /nobreak >nul
+echo Waiting for initialization...
+timeout /t 5 /nobreak >nul 2>&1
 
-REM Step 5: Show service status
-echo Step 4/4: Checking service status...
-docker compose ps
+REM Show status
+echo Step 4/4: Service status...
+echo [DEBUG] Checking status... >> "%LOG_FILE%" 2>&1
+!DOCKER_COMPOSE_CMD! ps >> "%LOG_FILE%" 2>&1
+!DOCKER_COMPOSE_CMD! ps
 echo.
 
-REM Show GPU memory after restart
-echo GPU Memory After Restart:
-where nvidia-smi >nul 2>nul
-if %errorlevel% equ 0 (
+REM GPU after restart
+echo GPU After Restart:
+where nvidia-smi >nul 2>&1
+if !errorlevel! equ 0 (
+    nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader,nounits >> "%LOG_FILE%" 2>&1
     nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader,nounits
 )
 echo.
 
 echo ==========================================
-echo   SAM2 Demo Restarted Successfully!
+echo   Success!
 echo ==========================================
 echo.
-echo Access the demo at:
+echo Access:
 echo   Frontend: http://ai.bygpu.com:55305/sam2/
-echo   Backend API: http://ai.bygpu.com:55305/api/sam2
+echo   Backend: http://ai.bygpu.com:55305/api/sam2
 echo.
-echo To view backend logs:
-echo   docker compose logs -f backend
+echo Logs:
+echo   Backend: docker compose logs -f backend
+echo   All: docker compose logs -f
 echo.
-echo To view all logs:
-echo   docker compose logs -f
+echo Debug log: %LOG_FILE%
 echo.
-echo GPU Memory Leak Fixes Applied:
-echo   * Sessions now properly clean up GPU memory on close
-echo   * Old sessions auto-close when uploading new videos
-echo   * Periodic GPU cache clearing during propagation
-echo   * Frame output tensors cleaned up immediately
-echo.
-echo Test by uploading multiple videos consecutively!
+echo [DEBUG] Completed at %DATE% %TIME% >> "%LOG_FILE%" 2>&1
 echo.
 pause
