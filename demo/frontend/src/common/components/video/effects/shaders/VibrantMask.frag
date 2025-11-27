@@ -25,6 +25,9 @@ uniform int uNumMasks;
 uniform sampler2D uMaskTexture0;
 uniform sampler2D uMaskTexture1;
 uniform sampler2D uMaskTexture2;
+uniform sampler2D uMaskTexture3;
+uniform sampler2D uMaskTexture4;
+uniform sampler2D uMaskTexture5;
 
 out vec4 fragColor;
 
@@ -35,6 +38,9 @@ void main() {
   vec4 color1 = vec4(0.0f);
   vec4 color2 = vec4(0.0f);
   vec4 color3 = vec4(0.0f);
+  vec4 color4 = vec4(0.0f);
+  vec4 color5 = vec4(0.0f);
+  vec4 color6 = vec4(0.0f);
 
   // Apply edge detection for each mask
   // We can't use dynamic indexing with samplers in GLSL ES 3.0.
@@ -48,8 +54,17 @@ void main() {
   if(uNumMasks > 2) {
     color3 = texture(uMaskTexture2, vec2(vTexCoord.y, vTexCoord.x));
   }
+  if(uNumMasks > 3) {
+    color4 = texture(uMaskTexture3, vec2(vTexCoord.y, vTexCoord.x));
+  }
+  if(uNumMasks > 4) {
+    color5 = texture(uMaskTexture4, vec2(vTexCoord.y, vTexCoord.x));
+  }
+  if(uNumMasks > 5) {
+    color6 = texture(uMaskTexture5, vec2(vTexCoord.y, vTexCoord.x));
+  }
 
-  bool overlap = (color1.r > 0.0f || color2.r > 0.0f || color3.r > 0.0f);
+  bool overlap = (color1.r > 0.0f || color2.r > 0.0f || color3.r > 0.0f || color4.r > 0.0f || color5.r > 0.0f || color6.r > 0.0f);
   if(overlap) {
     fragColor = vec4(gradedColor, 1);
   } else {

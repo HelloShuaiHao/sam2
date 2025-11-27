@@ -26,14 +26,23 @@ uniform bool uTransparency;
 uniform sampler2D uMaskTexture0;
 uniform sampler2D uMaskTexture1;
 uniform sampler2D uMaskTexture2;
+uniform sampler2D uMaskTexture3;
+uniform sampler2D uMaskTexture4;
+uniform sampler2D uMaskTexture5;
 
 uniform vec4 uMaskColor0;
 uniform vec4 uMaskColor1;
 uniform vec4 uMaskColor2;
+uniform vec4 uMaskColor3;
+uniform vec4 uMaskColor4;
+uniform vec4 uMaskColor5;
 
 uniform vec4 bbox0;
 uniform vec4 bbox1;
 uniform vec4 bbox2;
+uniform vec4 bbox3;
+uniform vec4 bbox4;
+uniform vec4 bbox5;
 
 out vec4 fragColor;
 
@@ -46,9 +55,15 @@ void main() {
   vec4 mask1 = vec4(0.0f);
   vec4 mask2 = vec4(0.0f);
   vec4 mask3 = vec4(0.0f);
+  vec4 mask4 = vec4(0.0f);
+  vec4 mask5 = vec4(0.0f);
+  vec4 mask6 = vec4(0.0f);
   vec4 color1 = uMaskColor0 / 255.0;
   vec4 color2 = uMaskColor1 / 255.0;
   vec4 color3 = uMaskColor2 / 255.0;
+  vec4 color4 = uMaskColor3 / 255.0;
+  vec4 color5 = uMaskColor4 / 255.0;
+  vec4 color6 = uMaskColor5 / 255.0;
   vec4 scopedColor = vec4(0.0f);
 
   bool scoped = false;
@@ -117,8 +132,71 @@ void main() {
       scopedColor = uLight ? whiteVariation : color3;
     }
   }
+  if(uNumMasks > 3) {
+    mask4 = texture(uMaskTexture3, vec2(vTexCoord.y, vTexCoord.x));
 
-  bool overlap = (mask1.r > 0.0f || mask2.r > 0.0f || mask3.r > 0.0f);
+    vec2 center4 = (bbox3.xy + bbox3.zw) * 0.5f;
+    float radiusX4 = abs(bbox3.y - bbox3.w) * 0.5f;
+    float radiusY4 = radiusX4 / aspectRatio;
+
+    float distX4 = (vTexCoord.x - center4.x) / radiusX4;
+    float distY4 = (vTexCoord.y - center4.y) / radiusY4;
+    float dist4 = sqrt(pow(distX4, 2.0f) + pow(distY4, 2.0f));
+
+    if(uFillColor) {
+      if(dist4 >= radiusThreshold - tickness && dist4 <= radiusThreshold) {
+        scoped = true;
+        scopedColor = uLight ? whiteVariation : color4;
+      }
+    } else if(dist4 <= radiusThreshold) {
+      scoped = true;
+      scopedColor = uLight ? whiteVariation : color4;
+    }
+  }
+  if(uNumMasks > 4) {
+    mask5 = texture(uMaskTexture4, vec2(vTexCoord.y, vTexCoord.x));
+
+    vec2 center5 = (bbox4.xy + bbox4.zw) * 0.5f;
+    float radiusX5 = abs(bbox4.y - bbox4.w) * 0.5f;
+    float radiusY5 = radiusX5 / aspectRatio;
+
+    float distX5 = (vTexCoord.x - center5.x) / radiusX5;
+    float distY5 = (vTexCoord.y - center5.y) / radiusY5;
+    float dist5 = sqrt(pow(distX5, 2.0f) + pow(distY5, 2.0f));
+
+    if(uFillColor) {
+      if(dist5 >= radiusThreshold - tickness && dist5 <= radiusThreshold) {
+        scoped = true;
+        scopedColor = uLight ? whiteVariation : color5;
+      }
+    } else if(dist5 <= radiusThreshold) {
+      scoped = true;
+      scopedColor = uLight ? whiteVariation : color5;
+    }
+  }
+  if(uNumMasks > 5) {
+    mask6 = texture(uMaskTexture5, vec2(vTexCoord.y, vTexCoord.x));
+
+    vec2 center6 = (bbox5.xy + bbox5.zw) * 0.5f;
+    float radiusX6 = abs(bbox5.y - bbox5.w) * 0.5f;
+    float radiusY6 = radiusX6 / aspectRatio;
+
+    float distX6 = (vTexCoord.x - center6.x) / radiusX6;
+    float distY6 = (vTexCoord.y - center6.y) / radiusY6;
+    float dist6 = sqrt(pow(distX6, 2.0f) + pow(distY6, 2.0f));
+
+    if(uFillColor) {
+      if(dist6 >= radiusThreshold - tickness && dist6 <= radiusThreshold) {
+        scoped = true;
+        scopedColor = uLight ? whiteVariation : color6;
+      }
+    } else if(dist6 <= radiusThreshold) {
+      scoped = true;
+      scopedColor = uLight ? whiteVariation : color6;
+    }
+  }
+
+  bool overlap = (mask1.r > 0.0f || mask2.r > 0.0f || mask3.r > 0.0f || mask4.r > 0.0f || mask5.r > 0.0f || mask6.r > 0.0f);
 
   if(scoped) {
     fragColor = overlap ? color : scopedColor;
