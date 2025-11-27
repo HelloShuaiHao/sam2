@@ -34,7 +34,7 @@ export const BLOG_URL = 'http://ai.meta.com/blog/sam2';
 export const VIDEO_API_ENDPOINT = 'http://ai.bygpu.com:55305/api/sam2';
 export const INFERENCE_API_ENDPOINT = 'http://ai.bygpu.com:55305/api/sam2';
 
-export const demoObjectLimit = 3;
+export const demoObjectLimit = 6;
 
 export const DEFAULT_EFFECT_LAYERS: EffectLayers = {
   background: 'Original',
