@@ -96,24 +96,38 @@ export const activeTrackletObjectAtom = atom<BaseTracklet | null>(get => {
 
 export const trackletObjectsAtom = atom<BaseTracklet[]>([]);
 
+// 派生 atom：过滤掉属于动作片段的物体，只返回全局物体
+export const globalTrackletObjectsAtom = atom<BaseTracklet[]>(get => {
+  const allTracklets = get(trackletObjectsAtom);
+  const actionSegments = get(actionSegmentsAtom);
+
+  // 收集所有动作片段内的物体 ID
+  const actionObjectIds = new Set(
+    actionSegments.flatMap(seg => seg.objects.map(obj => obj.id)),
+  );
+
+  // 只保留不属于任何动作片段的物体
+  return allTracklets.filter(t => !actionObjectIds.has(t.id));
+});
+
 // Custom names for tracklets (tracklet ID -> custom name)
 export const trackletNamesAtom = atom<Record<number, string>>({});
 
 export const maxTrackletObjectIdAtom = atom<number>(get => {
-  const tracklets = get(trackletObjectsAtom);
+  const tracklets = get(globalTrackletObjectsAtom);
   return tracklets.reduce((prev, curr) => Math.max(prev, curr.id), 0);
 });
 
 export const isTrackletObjectLimitReachedAtom = atom<boolean>(
-  get => get(trackletObjectsAtom).length >= MAX_NUMBER_TRACKLET_OBJECTS,
+  get => get(globalTrackletObjectsAtom).length >= MAX_NUMBER_TRACKLET_OBJECTS,
 );
 
 export const areTrackletObjectsInitializedAtom = atom<boolean>(get =>
-  get(trackletObjectsAtom).every(obj => obj.isInitialized),
+  get(globalTrackletObjectsAtom).every(obj => obj.isInitialized),
 );
 
 export const isFirstClickMadeAtom = atom(get => {
-  const tracklets = get(trackletObjectsAtom);
+  const tracklets = get(globalTrackletObjectsAtom);
   return tracklets.some(tracklet => tracklet.points.length > 0);
 });
 
@@ -183,4 +197,55 @@ export const messageMapAtom = atom<MessagesEventMap>(defaultMessageMap);
 
 export const uploadingStateAtom = atom<'default' | 'uploading' | 'error'>(
   'default',
+);
+
+// #####################
+// ACTION SEGMENTS (动作片段)
+// #####################
+
+export type ActionSegmentObject = {
+  id: number;
+  name: string; // 物体名称，如"剪刀"
+  color: string;
+  points: SegmentationPoint[][]; // 仅在片段时间范围内的帧
+  masks: TrackletMask[];
+};
+
+export type ActionSegment = {
+  id: string; // UUID
+  name: string; // 动作名称，如"剪断胆囊管"
+  frameStart: number; // 起始帧索引
+  frameEnd: number; // 结束帧索引
+  objects: ActionSegmentObject[]; // 该片段内标注的物体
+  createdAt: number; // 创建时间戳
+};
+
+// 所有动作片段
+export const actionSegmentsAtom = atom<ActionSegment[]>([]);
+
+// 当前选中/正在编辑的动作片段ID
+export const activeActionSegmentIdAtom = atom<string | null>(null);
+
+// 当前活动的动作片段（派生atom）
+export const activeActionSegmentAtom = atom<ActionSegment | null>(get => {
+  const segmentId = get(activeActionSegmentIdAtom);
+  const segments = get(actionSegmentsAtom);
+  return segments.find(seg => seg.id === segmentId) ?? null;
+});
+
+// 标注模式：'object' = 全局物体标注，'action' = 动作片段标注
+export const annotationModeAtom = atom<'object' | 'action'>('object');
+
+// 动作片段内当前选中的物体ID
+export const activeActionObjectIdAtom = atom<number | null>(null);
+
+// 是否正在添加动作片段内的物体（控制InteractionLayer的显示）
+export const isAddingActionObjectAtom = atom<boolean>(false);
+
+// 是否正在选择时间段（拖动时间轴状态）
+export const isSelectingTimeRangeAtom = atom<boolean>(false);
+
+// 临时时间段选择（拖动过程中）
+export const tempTimeRangeAtom = atom<{start: number; end: number} | null>(
+  null,
 );

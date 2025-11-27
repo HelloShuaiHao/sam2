@@ -13,12 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import AnnotationModeToggle from '@/common/components/actions/AnnotationModeToggle';
 import PlaybackButton from '@/common/components/button/PlaybackButton';
 import VideoFilmstrip from '@/common/components/video/filmstrip/VideoFilmstrip';
 import {spacing, w} from '@/theme/tokens.stylex';
 import stylex from '@stylexjs/stylex';
 
 const styles = stylex.create({
+  outerContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: spacing[3],
+    width: '100%',
+  },
+  modeToggleContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    paddingHorizontal: spacing[4],
+  },
   container: {
     display: 'flex',
     alignItems: 'end',
@@ -35,17 +47,27 @@ const styles = stylex.create({
   },
   filmstripContainer: {
     flexGrow: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: spacing[2],
   },
 });
 
 export default function VideoFilmstripWithPlayback() {
   return (
-    <div {...stylex.props(styles.container)}>
-      <div {...stylex.props(styles.playbackButtonContainer)}>
-        <PlaybackButton />
+    <div {...stylex.props(styles.outerContainer)}>
+      {/* 模式切换按钮 */}
+      <div {...stylex.props(styles.modeToggleContainer)}>
+        <AnnotationModeToggle />
       </div>
-      <div {...stylex.props(styles.filmstripContainer)}>
-        <VideoFilmstrip />
+
+      <div {...stylex.props(styles.container)}>
+        <div {...stylex.props(styles.playbackButtonContainer)}>
+          <PlaybackButton />
+        </div>
+        <div {...stylex.props(styles.filmstripContainer)}>
+          <VideoFilmstrip />
+        </div>
       </div>
     </div>
   );

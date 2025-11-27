@@ -26,7 +26,7 @@ import {
   isAddObjectEnabledAtom,
   isFirstClickMadeAtom,
   isTrackletObjectLimitReachedAtom,
-  trackletObjectsAtom,
+  globalTrackletObjectsAtom,
   trackletNamesAtom,
 } from '@/demo/atoms';
 import {useAtomValue, useSetAtom} from 'jotai';
@@ -36,7 +36,7 @@ type Props = {
 };
 
 export default function ObjectsToolbar({onTabChange}: Props) {
-  const tracklets = useAtomValue(trackletObjectsAtom);
+  const tracklets = useAtomValue(globalTrackletObjectsAtom);
   const activeTracklet = useAtomValue(activeTrackletObjectAtom);
   const setActiveTrackletId = useSetAtom(activeTrackletObjectIdAtom);
   const isFirstClickMade = useAtomValue(isFirstClickMadeAtom);

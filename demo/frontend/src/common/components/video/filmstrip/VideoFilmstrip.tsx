@@ -14,11 +14,18 @@
  * limitations under the License.
  */
 import SelectedFrameHelper from '@/common/components/video/filmstrip/SelectedFrameHelper';
-import {isPlayingAtom} from '@/demo/atoms';
+import {
+  isPlayingAtom,
+  annotationModeAtom,
+  actionSegmentsAtom,
+  activeActionSegmentIdAtom,
+  isSelectingTimeRangeAtom,
+  tempTimeRangeAtom,
+} from '@/demo/atoms';
 import stylex from '@stylexjs/stylex';
-import {useAtomValue, useSetAtom} from 'jotai';
+import {useAtom, useAtomValue, useSetAtom} from 'jotai';
 import {CanvasSpace, Pt} from 'pts';
-import {useCallback, useEffect, useMemo, useRef} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {PtsCanvas, PtsCanvasImperative} from 'react-pts-canvas';
 import {VideoRef} from '../Video';
 import {DecodeEvent, FrameUpdateEvent} from '../VideoWorkerBridge';
@@ -26,6 +33,7 @@ import useVideo from '../editor/useVideo';
 import {
   drawFilmstrip,
   drawMarker,
+  drawActionSegments,
   getPointerPosition,
   getTimeFromFrame,
 } from './FilmstripUtil';
@@ -77,6 +85,21 @@ export default function VideoFilmstrip() {
   const setSelectedFrameHelper = useSetAtom(selectedFrameHelperAtom);
 
   const fpsRef = useRef<number>(30);
+
+  // 动作片段相关状态
+  const annotationMode = useAtomValue(annotationModeAtom);
+  const [actionSegments, setActionSegments] = useAtom(actionSegmentsAtom);
+  const setActiveSegmentId = useSetAtom(activeActionSegmentIdAtom);
+  const [isSelectingTimeRange, setIsSelectingTimeRange] = useAtom(
+    isSelectingTimeRangeAtom,
+  );
+  const [tempTimeRange, setTempTimeRange] = useAtom(tempTimeRangeAtom);
+  const [segmentStartFrame, setSegmentStartFrame] = useState<number | null>(
+    null,
+  );
+  const lastClickTimeRef = useRef<number>(0);
+  const DOUBLE_CLICK_DELAY = 300; // 双击检测延迟（毫秒）
+  const activeSegmentId = useAtomValue(activeActionSegmentIdAtom);
 
   useEffect(() => {
     function onDecode(event: DecodeEvent) {
@@ -150,6 +173,18 @@ export default function VideoFilmstrip() {
 
     drawFilmstrip(filmstripRef.current, space, form);
 
+    // 在动作标注模式下绘制时间段高亮
+    if (annotationMode === 'action' && video) {
+      drawActionSegments(
+        space,
+        form,
+        actionSegments,
+        activeSegmentId,
+        tempTimeRange,
+        video.numberOfFrames,
+      );
+    }
+
     const scanLabel =
       selectedFrameHelper.isScanning &&
       pointerPositionRef.current !== null &&
@@ -167,7 +202,7 @@ export default function VideoFilmstrip() {
       scanLabel,
       fpsRef.current,
     );
-  }, [computeFrame, selectedFrameHelper]);
+  }, [computeFrame, selectedFrameHelper, annotationMode, actionSegments, activeSegmentId, tempTimeRange, video]);
 
   const handleAnimate = useCallback(() => {
     if (animateRAFHandle.current === null) {
@@ -268,9 +303,62 @@ export default function VideoFilmstrip() {
                 const frame = computeFrame(
                   pointerPositionRef.current.x / space.size.x,
                 );
+
+                // === 动作标注模式：双击选择时间段 ===
+                if (annotationMode === 'action' && frame != null) {
+                  const currentTime = Date.now();
+                  const isDoubleClick =
+                    currentTime - lastClickTimeRef.current < DOUBLE_CLICK_DELAY;
+                  lastClickTimeRef.current = currentTime;
+
+                  if (isDoubleClick) {
+                    if (segmentStartFrame === null) {
+                      // 第一次双击：设置起始帧
+                      console.log(
+                        '[VideoFilmstrip] 第一次双击，设置起始帧:',
+                        frame.index,
+                      );
+                      setSegmentStartFrame(frame.index);
+                      setIsSelectingTimeRange(true);
+                      setTempTimeRange({start: frame.index, end: frame.index});
+                    } else {
+                      // 第二次双击：创建时间段
+                      console.log(
+                        '[VideoFilmstrip] 第二次双击，创建时间段:',
+                        segmentStartFrame,
+                        '-',
+                        frame.index,
+                      );
+                      const startFrame = Math.min(segmentStartFrame, frame.index);
+                      const endFrame = Math.max(segmentStartFrame, frame.index);
+
+                      if (endFrame - startFrame >= 1) {
+                        const newSegment = {
+                          id: `segment-${Date.now()}`,
+                          name: '未命名动作',
+                          frameStart: startFrame,
+                          frameEnd: endFrame,
+                          objects: [],
+                          createdAt: Date.now(),
+                        };
+                        setActionSegments([...actionSegments, newSegment]);
+                        setActiveSegmentId(newSegment.id);
+                      }
+
+                      // 重置选择状态
+                      setSegmentStartFrame(null);
+                      setIsSelectingTimeRange(false);
+                      setTempTimeRange(null);
+                    }
+                  }
+                }
+
+                // === 原有的帧选择逻辑 ===
                 if (
                   frame != null &&
-                  selectedFrameHelper.index !== frame.index
+                  selectedFrameHelper.index !== frame.index &&
+                  // 在动作模式下选择时间段时，不执行帧跳转
+                  !(annotationMode === 'action' && isSelectingTimeRange)
                 ) {
                   selectedFrameHelper.select(frame.index);
                   if (video !== null) {
@@ -307,6 +395,20 @@ export default function VideoFilmstrip() {
                 );
                 if (frame != null) {
                   handleAnimate();
+
+                  // === 动作标注模式：更新临时时间段 ===
+                  if (
+                    annotationMode === 'action' &&
+                    isSelectingTimeRange &&
+                    segmentStartFrame !== null
+                  ) {
+                    setTempTimeRange({
+                      start: Math.min(segmentStartFrame, frame.index),
+                      end: Math.max(segmentStartFrame, frame.index),
+                    });
+                  }
+
+                  // 实时预览视频帧
                   if (video !== null) {
                     video.frame = frame.index;
                   }
