@@ -892,12 +892,12 @@ class ExportService:
                 }
 
                 # Write segment metadata
-                with open(segment_dir / f"action_segment_{segment_id}.json", "w") as f:
-                    json.dump(segment_metadata, f, indent=2)
+                with open(segment_dir / f"action_segment_{segment_id}.json", "w", encoding='utf-8') as f:
+                    json.dump(segment_metadata, f, indent=2, ensure_ascii=False)
 
                 # Write annotations
-                with open(segment_dir / "annotations.json", "w") as f:
-                    json.dump(annotations, f, indent=2)
+                with open(segment_dir / "annotations.json", "w", encoding='utf-8') as f:
+                    json.dump(annotations, f, indent=2, ensure_ascii=False)
 
                 # Get statistics
                 stats = serializer.get_statistics()
@@ -913,8 +913,8 @@ class ExportService:
                     },
                     stats
                 )
-                with open(segment_dir / "metadata.json", "w") as f:
-                    json.dump(metadata, f, indent=2)
+                with open(segment_dir / "metadata.json", "w", encoding='utf-8') as f:
+                    json.dump(metadata, f, indent=2, ensure_ascii=False)
 
                 # Add to index
                 segments_index.append({
@@ -929,14 +929,14 @@ class ExportService:
                 job["progress"] = (idx + 1) / total_segments
 
             # Write segments index
-            with open(output_dir / "segments_index.json", "w") as f:
+            with open(output_dir / "segments_index.json", "w", encoding='utf-8') as f:
                 json.dump({
                     "export_type": "action_segments",
                     "format_version": "2.0",
                     "segment_count": total_segments,
                     "segments": segments_index,
                     "created_at": job["created_at"]
-                }, f, indent=2)
+                }, f, indent=2, ensure_ascii=False)
 
             # Create ZIP file
             zip_path = self.EXPORT_DIR / f"{job_id}.zip"

@@ -174,11 +174,11 @@ export default function TrackActionSegmentsButton() {
 
   return (
     <PrimaryCTAButton
-      disabled={isDisabled || isTracking}
+      disabled={isDisabled}
       onClick={handleTrackAllSegments}>
       {isTracking
-        ? `追踪中... ${Math.round(trackingProgress * 100)}%`
-        : `追踪所有动作 (${totalObjectsToTrack} 个物体)`}
+        ? `取消追踪`
+        : `开始追踪`}
     </PrimaryCTAButton>
   );
 }

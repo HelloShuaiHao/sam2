@@ -71,23 +71,25 @@ const styles = stylex.create({
   },
   segmentItem: {
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: '6px',
+    borderRadius: '12px',
     padding: '12px',
     cursor: 'pointer',
-    border: '1px solid transparent',
+    border: '2px solid transparent',
     transition: 'all 0.2s',
+    position: 'relative',
     ':hover': {
       backgroundColor: 'rgba(255, 255, 255, 0.1)',
+      borderColor: 'rgba(255, 255, 255, 0.2)',
     },
   },
   segmentItemActive: {
-    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
     borderColor: 'rgb(34, 197, 94)',
   },
   segmentHeader: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: '8px',
   },
   segmentName: {
@@ -95,6 +97,35 @@ const styles = stylex.create({
     fontWeight: '600',
     color: '#fff',
     flex: 1,
+    cursor: 'text',
+    padding: '4px 8px',
+    borderRadius: '6px',
+    border: '1px solid transparent',
+    transition: 'all 0.2s',
+    ':hover': {
+      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      borderColor: 'rgba(255, 255, 255, 0.2)',
+    },
+  },
+  deleteIcon: {
+    position: 'absolute',
+    top: '8px',
+    right: '8px',
+    width: '24px',
+    height: '24px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: '50%',
+    backgroundColor: 'transparent',
+    color: 'rgba(239, 68, 68, 0.7)',
+    cursor: 'pointer',
+    border: 'none',
+    transition: 'all 0.2s',
+    ':hover': {
+      backgroundColor: 'rgba(239, 68, 68, 0.2)',
+      color: 'rgb(239, 68, 68)',
+    },
   },
   segmentTime: {
     fontSize: '11px',
@@ -467,11 +498,6 @@ export default function ActionSegmentPanel() {
 
       {/* Scrollable content area */}
       <div {...stylex.props(styles.scrollableContent)}>
-        {/* Export button - shown when there are action segments */}
-        {actionSegments.length > 0 && (
-          <ExportActionSegmentButton targetFps={30} />
-        )}
-
         {actionSegments.length === 0 ? (
           <div {...stylex.props(styles.emptyState)}>
             在时间轴上拖动鼠标选择时间段
@@ -492,6 +518,14 @@ export default function ActionSegmentPanel() {
                   isActive && styles.segmentItemActive,
                 )}
                 onClick={() => handleSelectSegment(segment.id)}>
+                {/* Delete icon in top-right corner */}
+                <button
+                  {...stylex.props(styles.deleteIcon)}
+                  onClick={e => handleDeleteSegment(segment.id, e)}
+                  title="删除动作片段">
+                  ×
+                </button>
+
                 <div {...stylex.props(styles.segmentHeader)}>
                   {isEditing ? (
                     <input
@@ -505,7 +539,9 @@ export default function ActionSegmentPanel() {
                       onClick={e => e.stopPropagation()}
                     />
                   ) : (
-                    <div {...stylex.props(styles.segmentName)}>
+                    <div
+                      {...stylex.props(styles.segmentName)}
+                      onClick={e => handleStartEdit(segment, e)}>
                       {segment.name}
                     </div>
                   )}
@@ -514,21 +550,6 @@ export default function ActionSegmentPanel() {
                 <div {...stylex.props(styles.segmentTime)}>
                   {formatDuration(segment.frameStart, segment.frameEnd)}
                 </div>
-
-                {!isEditing && (
-                  <div {...stylex.props(styles.buttonGroup)}>
-                    <button
-                      {...stylex.props(styles.button)}
-                      onClick={e => handleStartEdit(segment, e)}>
-                      编辑
-                    </button>
-                    <button
-                      {...stylex.props(styles.button, styles.buttonDanger)}
-                      onClick={e => handleDeleteSegment(segment.id, e)}>
-                      删除
-                    </button>
-                  </div>
-                )}
 
                 {/* 物体列表 */}
                 {segment.objects.length > 0 && (
@@ -543,38 +564,6 @@ export default function ActionSegmentPanel() {
                         />
                       ))}
                     </div>
-
-                    {/* 批量追踪按钮 - 只在活跃片段且有物体时显示 */}
-                    {isActive && (
-                      <>
-                        <button
-                          {...stylex.props(styles.trackAllButton)}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleTrackAllObjects(segment);
-                          }}
-                          disabled={isTrackingAll}>
-                          {isTrackingAll
-                            ? `⏳ 追踪中... ${Math.round(trackingProgress * 100)}%`
-                            : `🚀 追踪所有物体 (${segment.objects.length})`}
-                        </button>
-
-                        {/* 追踪进度条 */}
-                        {isTrackingAll && (
-                          <>
-                            <div {...stylex.props(styles.progressBar)}>
-                              <div
-                                {...stylex.props(styles.progressFill)}
-                                style={{width: `${trackingProgress * 100}%`}}
-                              />
-                            </div>
-                            <div {...stylex.props(styles.trackingProgress)}>
-                              正在追踪物体，请稍候...
-                            </div>
-                          </>
-                        )}
-                      </>
-                    )}
                   </>
                 )}
 
@@ -627,6 +616,10 @@ export default function ActionSegmentPanel() {
       {/* Bottom fixed actions */}
       <div {...stylex.props(styles.bottomActions)}>
         <TrackActionSegmentsButton />
+        {/* Export button - shown when there are action segments */}
+        {actionSegments.length > 0 && (
+          <ExportActionSegmentButton targetFps={30} />
+        )}
       </div>
     </div>
   );

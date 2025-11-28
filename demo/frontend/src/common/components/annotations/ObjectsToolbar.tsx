@@ -28,6 +28,7 @@ import {
   isTrackletObjectLimitReachedAtom,
   globalTrackletObjectsAtom,
   trackletNamesAtom,
+  annotationModeAtom,
 } from '@/demo/atoms';
 import {useAtomValue, useSetAtom} from 'jotai';
 
@@ -43,6 +44,12 @@ export default function ObjectsToolbar({onTabChange}: Props) {
   const isObjectLimitReached = useAtomValue(isTrackletObjectLimitReachedAtom);
   const isAddObjectEnabled = useAtomValue(isAddObjectEnabledAtom);
   const trackletNames = useAtomValue(trackletNamesAtom);
+  const annotationMode = useAtomValue(annotationModeAtom);
+
+  // Hide in action mode
+  if (annotationMode === 'action') {
+    return null;
+  }
 
   if (!isFirstClickMade) {
     return <FirstClickView />;

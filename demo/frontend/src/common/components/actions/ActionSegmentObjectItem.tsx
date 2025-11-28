@@ -24,7 +24,7 @@ import stylex from '@stylexjs/stylex';
 import {useAtom, useSetAtom} from 'jotai';
 import {useState, useCallback} from 'react';
 import useVideo from '@/common/components/video/editor/useVideo';
-import {TrashCan, Copy} from '@carbon/icons-react';
+import {TrashCan} from '@carbon/icons-react';
 
 const styles = stylex.create({
   container: {
@@ -367,12 +367,6 @@ export default function ActionSegmentObjectItem({
         {/* Actions */}
         {!isEditing && (
           <div {...stylex.props(styles.actions)}>
-            <button
-              {...stylex.props(styles.actionButton)}
-              onClick={handleCopy}
-              title="Copy object">
-              <Copy size={16} />
-            </button>
             <button
               {...stylex.props(styles.actionButton)}
               onClick={handleDelete}
