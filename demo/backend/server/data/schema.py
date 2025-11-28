@@ -35,6 +35,8 @@ from data.data_types import (
     ExportJobInfo,
     DeleteExportInput,
     DeleteExportResult,
+    ExportActionSegmentsInput,
+    ExportActionSegmentsResult,
     RemoveObjectInput,
     RLEMask,
     RLEMaskForObject,
@@ -361,6 +363,64 @@ class Mutation:
             return DeleteExportResult(
                 success=False,
                 message=f"Error deleting export: {str(e)}"
+            )
+
+    @strawberry.mutation
+    def export_action_segments(
+        self, input: ExportActionSegmentsInput, info: strawberry.Info
+    ) -> ExportActionSegmentsResult:
+        """
+        Export action segment annotations with metadata.
+        Generates a ZIP file with per-segment folders containing annotations.
+        Returns a job ID that can be used to track export progress.
+        """
+        # Import here to avoid circular dependency
+        from data.export_service import ExportService
+
+        export_service = ExportService()
+
+        try:
+            # Convert GraphQL input to dict format expected by export service
+            action_segments = [
+                {
+                    "id": seg.id,
+                    "name": seg.name,
+                    "frame_start": seg.frame_start,
+                    "frame_end": seg.frame_end,
+                    "created_at": seg.created_at,
+                    "objects": [
+                        {
+                            "object_id": obj.object_id,
+                            "label": obj.label,
+                            "color": obj.color,
+                        }
+                        for obj in seg.objects
+                    ],
+                }
+                for seg in input.action_segments
+            ]
+
+            result = export_service.create_action_segment_export_job(
+                session_id=input.session_id,
+                action_segments=action_segments,
+                target_fps=input.target_fps,
+                inference_api=info.context["inference_api"],
+                include_visualizations=input.include_visualizations
+            )
+
+            return ExportActionSegmentsResult(
+                job_id=result.job_id,
+                status=result.status,
+                message=result.message,
+                segment_count=len(action_segments)
+            )
+        except Exception as e:
+            from data.data_types import ExportJobStatus
+            return ExportActionSegmentsResult(
+                job_id="",
+                status=ExportJobStatus.FAILED,
+                message=f"Failed to create action segment export job: {str(e)}",
+                segment_count=0
             )
 
 

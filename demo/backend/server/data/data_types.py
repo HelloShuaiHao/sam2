@@ -215,3 +215,123 @@ class DeleteExportResult:
     success: bool
     message: Optional[str] = None
 
+
+# Action Segment related types
+@strawberry.type
+class ActionSegmentObject:
+    """Object within an action segment."""
+    object_id: int
+    label: str
+    color: str
+
+
+@strawberry.type
+class ActionSegment:
+    """Action segment with time range and associated objects."""
+    segment_id: str
+    name: str
+    frame_start: int
+    frame_end: int
+    objects: List[ActionSegmentObject]
+    created_at: int
+
+
+@strawberry.input
+class ActionSegmentObjectInput:
+    """Input for creating/updating action segment object."""
+    object_id: int
+    label: str
+    color: str
+
+
+@strawberry.input
+class CreateActionSegmentInput:
+    """Input for creating a new action segment."""
+    session_id: str
+    name: str
+    frame_start: int
+    frame_end: int
+
+
+@strawberry.input
+class UpdateActionSegmentInput:
+    """Input for updating an existing action segment."""
+    session_id: str
+    segment_id: str
+    name: Optional[str] = None
+    frame_start: Optional[int] = None
+    frame_end: Optional[int] = None
+
+
+@strawberry.input
+class DeleteActionSegmentInput:
+    """Input for deleting an action segment."""
+    session_id: str
+    segment_id: str
+
+
+@strawberry.input
+class AddObjectToSegmentInput:
+    """Input for adding an object to an action segment."""
+    session_id: str
+    segment_id: str
+    object_id: int
+    label: str
+    color: str
+
+
+@strawberry.input
+class RemoveObjectFromSegmentInput:
+    """Input for removing an object from an action segment."""
+    session_id: str
+    segment_id: str
+    object_id: int
+
+
+@strawberry.input
+class PropagateInSegmentInput:
+    """Input for propagating masks within a segment."""
+    session_id: str
+    segment_id: str
+    object_id: int
+    start_frame_index: int
+
+
+@strawberry.input
+class ActionSegmentObjectInput:
+    """Input for action segment object data."""
+    object_id: int
+    label: str
+    color: str
+
+
+@strawberry.input
+class ActionSegmentDataInput:
+    """Input for action segment data."""
+    id: str
+    name: str
+    frame_start: int
+    frame_end: int
+    created_at: int
+    objects: List[ActionSegmentObjectInput]
+
+
+@strawberry.input
+class ExportActionSegmentsInput:
+    """Input for exporting action segment annotations."""
+    session_id: str
+    action_segments: List[ActionSegmentDataInput]
+    target_fps: float
+    include_visualizations: bool = True
+
+
+@strawberry.type
+class ExportActionSegmentsResult:
+    """Result of action segment export request."""
+    job_id: str
+    status: ExportJobStatus
+    message: Optional[str] = None
+    download_url: Optional[str] = None
+    progress: Optional[float] = None
+    segment_count: Optional[int] = None
+

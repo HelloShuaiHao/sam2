@@ -709,3 +709,223 @@ class ExportService:
         except Exception as e:
             logger.error(f"Failed to delete export {job_id}: {e}")
             return False
+
+    def create_action_segment_export_job(
+        self,
+        session_id: str,
+        action_segments: list,
+        target_fps: float,
+        inference_api: InferenceAPI,
+        include_visualizations: bool = True
+    ) -> ExportResult:
+        """
+        Create an export job for action segments.
+
+        Args:
+            session_id: Video session ID
+            action_segments: List of action segment data (each with id, name, frame_start, frame_end, objects)
+            target_fps: Target export frame rate
+            inference_api: Reference to inference API
+            include_visualizations: Whether to include visualized frames
+
+        Returns:
+            ExportResult with job ID and initial status
+        """
+        try:
+            # Get session state
+            session = inference_api._InferenceAPI__get_session(session_id)
+            if not session:
+                raise ValueError(f"Session {session_id} not found")
+
+            job_id = str(uuid.uuid4())
+
+            # Create job record
+            job = {
+                "job_id": job_id,
+                "session_id": session_id,
+                "status": ExportJobStatus.PENDING,
+                "action_segments": action_segments,
+                "target_fps": target_fps,
+                "include_visualizations": include_visualizations,
+                "segment_count": len(action_segments),
+                "progress": 0.0,
+                "created_at": datetime.now().isoformat(),
+            }
+
+            self._jobs[job_id] = job
+            logger.info(f"Created action segment export job {job_id} for session {session_id}")
+
+            # Start background processing
+            thread = Thread(
+                target=self._process_action_segment_export,
+                args=(job_id, session_id, action_segments, target_fps, inference_api, include_visualizations)
+            )
+            thread.daemon = True
+            thread.start()
+
+            return ExportResult(
+                job_id=job_id,
+                status=ExportJobStatus.PENDING,
+                message="Action segment export job created",
+                segment_count=len(action_segments)
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to create action segment export job: {e}")
+            logger.error(traceback.format_exc())
+            return ExportResult(
+                job_id="",
+                status=ExportJobStatus.FAILED,
+                message=f"Failed to create export job: {str(e)}"
+            )
+
+    def _process_action_segment_export(
+        self,
+        job_id: str,
+        session_id: str,
+        action_segments: list,
+        target_fps: float,
+        inference_api: InferenceAPI,
+        include_visualizations: bool
+    ):
+        """
+        Process action segment export in background.
+        Creates a ZIP with one folder per segment.
+        """
+        try:
+            job = self._jobs[job_id]
+            job["status"] = ExportJobStatus.PROCESSING
+
+            session = inference_api._InferenceAPI__get_session(session_id)
+            inference_state = session["state"]
+
+            # Create output directory
+            output_dir = self.EXPORT_DIR / job_id
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            source_fps = 30.0  # TODO: Get from video metadata
+            total_segments = len(action_segments)
+
+            # Create index file for all segments
+            segments_index = []
+
+            # Process each action segment
+            for idx, segment in enumerate(action_segments):
+                segment_id = segment["id"]
+                segment_name = segment["name"]
+                frame_start = segment["frame_start"]
+                frame_end = segment["frame_end"]
+                objects = segment["objects"]
+
+                logger.info(f"Processing segment {idx+1}/{total_segments}: {segment_name}")
+
+                # Create segment directory
+                segment_dir = output_dir / f"segment_{segment_name}_{segment_id}"
+                segment_dir.mkdir(parents=True, exist_ok=True)
+
+                if include_visualizations:
+                    (segment_dir / "images").mkdir(exist_ok=True)
+
+                # Sample frames within segment range
+                segment_duration = (frame_end - frame_start + 1) / source_fps
+                sampler = FrameSampler(source_fps, frame_end - frame_start + 1, segment_duration)
+                frame_indices = sampler.get_export_frames(target_fps)
+
+                # Adjust frame indices to absolute positions
+                absolute_frame_indices = [f + frame_start for f in frame_indices]
+
+                # Extract segment annotations
+                serializer = AnnotationSerializer(inference_state, session_id)
+                annotations = []
+
+                for abs_frame_idx in absolute_frame_indices:
+                    frame_annotation = serializer.serialize_frame(
+                        abs_frame_idx,
+                        object_ids=[obj["object_id"] for obj in objects],
+                        object_names={obj["object_id"]: obj["label"] for obj in objects}
+                    )
+                    annotations.append(frame_annotation)
+
+                # Write segment metadata
+                segment_metadata = {
+                    "segment_id": segment_id,
+                    "segment_name": segment_name,
+                    "frame_start": frame_start,
+                    "frame_end": frame_end,
+                    "created_at": segment.get("created_at", int(datetime.now().timestamp() * 1000)),
+                    "objects": [
+                        {
+                            "object_id": obj["object_id"],
+                            "label": obj["label"],
+                            "color": obj["color"]
+                        }
+                        for obj in objects
+                    ],
+                    "format_version": "2.0"
+                }
+
+                with open(segment_dir / f"action_segment_{segment_id}.json", "w") as f:
+                    json.dump(segment_metadata, f, indent=2)
+
+                # Write annotations
+                with open(segment_dir / "annotations.json", "w") as f:
+                    json.dump(annotations, f, indent=2)
+
+                # Write metadata
+                metadata = create_metadata_file(
+                    session_id=session_id,
+                    video_path=inference_state.get("video_path", ""),
+                    target_fps=target_fps,
+                    total_frames=len(absolute_frame_indices),
+                    export_type="action_segment",
+                    segment_info=segment_metadata
+                )
+                with open(segment_dir / "metadata.json", "w") as f:
+                    json.dump(metadata, f, indent=2)
+
+                # Add to index
+                segments_index.append({
+                    "segment_id": segment_id,
+                    "segment_name": segment_name,
+                    "folder": f"segment_{segment_name}_{segment_id}",
+                    "frame_range": [frame_start, frame_end],
+                    "object_count": len(objects)
+                })
+
+                # Update progress
+                job["progress"] = (idx + 1) / total_segments
+
+            # Write segments index
+            with open(output_dir / "segments_index.json", "w") as f:
+                json.dump({
+                    "export_type": "action_segments",
+                    "format_version": "2.0",
+                    "segment_count": total_segments,
+                    "segments": segments_index,
+                    "created_at": job["created_at"]
+                }, f, indent=2)
+
+            # Create ZIP file
+            zip_path = self.EXPORT_DIR / f"{job_id}.zip"
+            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for file in output_dir.rglob('*'):
+                    if file.is_file():
+                        arcname = file.relative_to(output_dir)
+                        zipf.write(file, arcname)
+
+            # Clean up directory
+            shutil.rmtree(output_dir)
+
+            # Update job status
+            job["status"] = ExportJobStatus.COMPLETED
+            job["progress"] = 1.0
+            job["download_url"] = f"{API_URL}/api/exports/{job_id}/download"
+            job["completed_at"] = datetime.now().isoformat()
+
+            logger.info(f"Action segment export job {job_id} completed successfully")
+
+        except Exception as e:
+            logger.error(f"Action segment export job {job_id} failed: {e}")
+            logger.error(traceback.format_exc())
+            job["status"] = ExportJobStatus.FAILED
+            job["error_message"] = str(e)

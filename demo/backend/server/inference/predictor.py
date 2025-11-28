@@ -602,3 +602,111 @@ class InferenceAPI:
 
             logger.info(f"removed session {session_id} and cleared GPU memory; {self.__get_session_stats()}")
             return True
+
+    def propagate_in_segment(
+        self, session_id: str, frame_start: int, frame_end: int, start_frame_idx: int
+    ) -> Generator[PropagateDataResponse, None, None]:
+        """
+        Propagate masks within a specific frame range (action segment).
+        This is a wrapper around propagate_in_video that filters results to only
+        include frames within the segment bounds.
+
+        Args:
+            session_id: The session ID
+            frame_start: Start frame of the segment (inclusive)
+            frame_end: End frame of the segment (inclusive)
+            start_frame_idx: Frame to start propagation from
+
+        Yields:
+            PropagateDataResponse for frames within [frame_start, frame_end]
+        """
+        with self.autocast_context(), self.inference_lock:
+            logger.info(
+                f"propagate in segment in session {session_id}: "
+                f"frame_start={frame_start}, frame_end={frame_end}, start_frame_idx={start_frame_idx}"
+            )
+
+            try:
+                session = self.__get_session(session_id)
+                session["canceled"] = False
+                inference_state = session["state"]
+
+                # Calculate max frames to track in each direction
+                max_forward = frame_end - start_frame_idx if start_frame_idx < frame_end else 0
+                max_backward = start_frame_idx - frame_start if start_frame_idx > frame_start else 0
+
+                # Forward propagation (limited to segment end)
+                if max_forward > 0:
+                    for outputs in self.predictor.propagate_in_video(
+                        inference_state=inference_state,
+                        start_frame_idx=start_frame_idx,
+                        max_frame_num_to_track=max_forward + 1,
+                        reverse=False,
+                    ):
+                        if session["canceled"]:
+                            return None
+
+                        frame_idx, obj_ids, video_res_masks = outputs
+
+                        # Only yield frames within segment bounds
+                        if frame_idx > frame_end:
+                            break
+
+                        if frame_idx >= frame_start and frame_idx <= frame_end:
+                            masks_binary = (
+                                (video_res_masks > self.score_thresh)[:, 0].detach().cpu().numpy()
+                            )
+                            del video_res_masks
+
+                            rle_mask_list = self.__get_rle_mask_list(
+                                object_ids=obj_ids, masks=masks_binary
+                            )
+
+                            yield PropagateDataResponse(
+                                frame_index=frame_idx,
+                                results=rle_mask_list,
+                            )
+
+                        if frame_idx % 10 == 0:
+                            gc.collect()
+                            if torch.cuda.is_available():
+                                torch.cuda.empty_cache()
+
+                # Backward propagation (limited to segment start)
+                if max_backward > 0:
+                    for outputs in self.predictor.propagate_in_video(
+                        inference_state=inference_state,
+                        start_frame_idx=start_frame_idx,
+                        max_frame_num_to_track=max_backward + 1,
+                        reverse=True,
+                    ):
+                        if session["canceled"]:
+                            return None
+
+                        frame_idx, obj_ids, video_res_masks = outputs
+
+                        # Only yield frames within segment bounds
+                        if frame_idx < frame_start:
+                            break
+
+                        if frame_idx >= frame_start and frame_idx <= frame_end:
+                            masks_binary = (
+                                (video_res_masks > self.score_thresh)[:, 0].detach().cpu().numpy()
+                            )
+                            del video_res_masks
+
+                            rle_mask_list = self.__get_rle_mask_list(
+                                object_ids=obj_ids, masks=masks_binary
+                            )
+
+                            yield PropagateDataResponse(
+                                frame_index=frame_idx,
+                                results=rle_mask_list,
+                            )
+
+                        if frame_idx % 10 == 0:
+                            gc.collect()
+                            if torch.cuda.is_available():
+                                torch.cuda.empty_cache()
+            finally:
+                logger.info(f"completed propagation in segment for session {session_id}")

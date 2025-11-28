@@ -73,6 +73,15 @@ export interface ITracker {
   streamMasks(frameIndex: number): Promise<void>;
   abortStreamMasks(): void;
   enableStats(): void;
+
+  // Segment-scoped tracking methods
+  trackObjectInSegment(
+    objectId: number,
+    segmentId: string,
+    frameStart: number,
+    frameEnd: number,
+  ): Promise<void>;
+  stopSegmentTracking(objectId: number, segmentId: string): Promise<void>;
 }
 
 export abstract class Tracker implements ITracker {
@@ -97,6 +106,13 @@ export abstract class Tracker implements ITracker {
   abstract streamMasks(frameIndex: number): Promise<void>;
   abstract abortStreamMasks(): void;
   abstract enableStats(): void;
+  abstract trackObjectInSegment(
+    objectId: number,
+    segmentId: string,
+    frameStart: number,
+    frameEnd: number,
+  ): Promise<void>;
+  abstract stopSegmentTracking(objectId: number, segmentId: string): Promise<void>;
 
   // PRIVATE FUNCTIONS
 

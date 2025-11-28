@@ -22,11 +22,15 @@ import {
   frameIndexAtom,
   isAddingActionObjectAtom,
   activeActionObjectIdAtom,
+  activeActionSegmentObjectIdAtom,
+  sessionAtom,
 } from '@/demo/atoms';
 import stylex from '@stylexjs/stylex';
 import {useAtom, useAtomValue, useSetAtom} from 'jotai';
 import {useCallback, useState} from 'react';
 import useVideo from '@/common/components/video/editor/useVideo';
+import ActionSegmentObjectItem from './ActionSegmentObjectItem';
+import ExportActionSegmentButton from '@/common/components/export/ExportActionSegmentButton';
 
 const styles = stylex.create({
   panel: {
@@ -184,6 +188,7 @@ export default function ActionSegmentPanel() {
     isAddingActionObjectAtom,
   );
   const setActiveActionObjectId = useSetAtom(activeActionObjectIdAtom);
+  const activeObjectId = useAtomValue(activeActionSegmentObjectIdAtom);
 
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState<string>('');
@@ -307,6 +312,11 @@ export default function ActionSegmentPanel() {
     <div {...stylex.props(styles.panel)}>
       <div {...stylex.props(styles.header)}>动作片段</div>
 
+      {/* Export button - shown when there are action segments */}
+      {actionSegments.length > 0 && (
+        <ExportActionSegmentButton targetFps={30} />
+      )}
+
       {actionSegments.length === 0 ? (
         <div {...stylex.props(styles.emptyState)}>
           在时间轴上拖动鼠标选择时间段
@@ -369,13 +379,12 @@ export default function ActionSegmentPanel() {
                 {segment.objects.length > 0 && (
                   <div {...stylex.props(styles.objectList)}>
                     {segment.objects.map(obj => (
-                      <div key={obj.id} {...stylex.props(styles.objectItem)}>
-                        <div
-                          {...stylex.props(styles.objectColor)}
-                          style={{backgroundColor: obj.color}}
-                        />
-                        <span>{obj.name}</span>
-                      </div>
+                      <ActionSegmentObjectItem
+                        key={obj.id}
+                        object={obj}
+                        segmentId={segment.id}
+                        isActive={activeObjectId === obj.id}
+                      />
                     ))}
                   </div>
                 )}

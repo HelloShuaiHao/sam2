@@ -209,6 +209,9 @@ export type ActionSegmentObject = {
   color: string;
   points: SegmentationPoint[][]; // 仅在片段时间范围内的帧
   masks: TrackletMask[];
+  isTracking: boolean; // 是否正在追踪
+  trackingProgress: number; // 追踪进度 0-1
+  thumbnail: string | null; // 物体缩略图
 };
 
 export type ActionSegment = {
@@ -249,3 +252,36 @@ export const isSelectingTimeRangeAtom = atom<boolean>(false);
 export const tempTimeRangeAtom = atom<{start: number; end: number} | null>(
   null,
 );
+
+// 当前选中的动作片段物体ID
+export const activeActionSegmentObjectIdAtom = atom<number | null>(null);
+
+// 当前活动的动作片段物体（派生atom）
+export const activeActionSegmentObjectAtom = atom<ActionSegmentObject | null>(
+  get => {
+    const objectId = get(activeActionSegmentObjectIdAtom);
+    const activeSegment = get(activeActionSegmentAtom);
+    return (
+      activeSegment?.objects.find(obj => obj.id === objectId) ?? null
+    );
+  },
+);
+
+// 派生 atom：获取当前片段内的所有物体
+export const currentSegmentObjectsAtom = atom<ActionSegmentObject[]>(get => {
+  const activeSegment = get(activeActionSegmentAtom);
+  return activeSegment?.objects ?? [];
+});
+
+// 动作片段导出配置
+export type ActionExportConfig = {
+  segmentIds: string[]; // 要导出的片段ID列表，空数组表示导出全部
+  targetFps: number;
+  includeVisualizations: boolean;
+};
+
+export const actionExportConfigAtom = atom<ActionExportConfig>({
+  segmentIds: [],
+  targetFps: 30,
+  includeVisualizations: true,
+});

@@ -842,4 +842,41 @@ export class SAM2Model extends Tracker {
       }
     });
   }
+
+  /**
+   * Track an object within a specific action segment frame range.
+   * This is a wrapper around streamMasks that limits propagation to the segment bounds.
+   */
+  public async trackObjectInSegment(
+    objectId: number,
+    segmentId: string,
+    frameStart: number,
+    frameEnd: number,
+  ): Promise<void> {
+    // TODO: Implement backend support for segment-scoped tracking
+    // For now, this is a stub that will call streamMasks
+    // The backend needs to be updated to accept frameStart/frameEnd parameters
+    Logger.info(
+      `Tracking object ${objectId} in segment ${segmentId} from frame ${frameStart} to ${frameEnd}`,
+    );
+
+    // This will be implemented when backend support is added
+    // The idea is to call a modified version of streamMasks that only propagates within the range
+    return Promise.resolve();
+  }
+
+  /**
+   * Stop tracking an object within an action segment.
+   */
+  public async stopSegmentTracking(
+    objectId: number,
+    segmentId: string,
+  ): Promise<void> {
+    // TODO: Implement backend support for stopping segment-scoped tracking
+    Logger.info(`Stopping tracking for object ${objectId} in segment ${segmentId}`);
+
+    // This will abort the current streaming operation
+    // The backend needs to track which segment is being tracked
+    return Promise.resolve();
+  }
 }

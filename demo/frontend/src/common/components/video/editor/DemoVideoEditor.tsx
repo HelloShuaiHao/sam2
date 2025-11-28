@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 import TrackletsAnnotation from '@/common/components/annotations/TrackletsAnnotation';
+import ActionSegmentsAnnotation from '@/common/components/actions/ActionSegmentsAnnotation';
 import useCloseSessionBeforeUnload from '@/common/components/session/useCloseSessionBeforeUnload';
 import MessagesSnackbar from '@/common/components/snackbar/MessagesSnackbar';
 import useMessagesSnackbar from '@/common/components/snackbar/useDemoMessagesSnackbar';
@@ -423,6 +424,7 @@ export default function DemoVideoEditor({video: inputVideo}: Props) {
           <div className="bg-graydark-800 w-full">
             <VideoFilmstripWithPlayback />
             <TrackletsAnnotation />
+            <ActionSegmentsAnnotation />
           </div>
         </VideoEditor>
       </div>
