@@ -273,7 +273,8 @@ class ExportService:
         inference_api: InferenceAPI,
         inference_state: Any,
         frame_index: int,
-        object_names: Dict[str, str]
+        object_names: Dict[str, str],
+        filter_object_ids: bool = False
     ) -> list:
         """
         Get all object annotations for a specific frame.
@@ -283,6 +284,7 @@ class ExportService:
             inference_state: Inference state
             frame_index: Frame index
             object_names: Mapping of object_id (as string) to custom name
+            filter_object_ids: If True, only process objects in object_names dict
 
         Returns:
             List of object dictionaries with masks
@@ -291,14 +293,17 @@ class ExportService:
 
         # Get object IDs from inference state
         # The predictor stores tracked objects in the state
-        obj_ids = inference_state.get("obj_id_to_idx", {}).keys()
+        all_obj_ids = inference_state.get("obj_id_to_idx", {}).keys()
 
-        # 🔍 DEBUG: Check what we have in inference_state
-        logger.info(f"🔍 DEBUG - Frame {frame_index}:")
-        logger.info(f"  - obj_id_to_idx keys: {list(obj_ids)}")
-        logger.info(f"  - inference_state keys: {list(inference_state.keys())}")
-        if "output_dict_per_obj" in inference_state:
-            logger.info(f"  - output_dict_per_obj length: {len(inference_state['output_dict_per_obj'])}")
+        # Filter object IDs if requested (for action segments)
+        if filter_object_ids and object_names:
+            # Only process objects that are in the object_names dict
+            obj_ids = [obj_id for obj_id in all_obj_ids if str(obj_id) in object_names]
+            logger.info(f"🔍 Frame {frame_index}: Filtering {len(obj_ids)} objects from {len(all_obj_ids)} total objects")
+            logger.info(f"  - Requested object IDs: {list(object_names.keys())}")
+            logger.info(f"  - Filtered object IDs: {obj_ids}")
+        else:
+            obj_ids = all_obj_ids
 
         with inference_api.autocast_context():
             for obj_id in obj_ids:
@@ -848,12 +853,13 @@ class ExportService:
 
                 # Extract segment annotations
                 for abs_frame_idx in absolute_frame_indices:
-                    # Get frame annotations
+                    # Get frame annotations - ONLY for objects in this segment
                     frame_objects = self._get_frame_annotations(
                         inference_api,
                         inference_state,
                         abs_frame_idx,
-                        {str(obj["object_id"]): obj["label"] for obj in objects}
+                        {str(obj["object_id"]): obj["label"] for obj in objects},
+                        filter_object_ids=True  # Filter to only include this segment's objects
                     )
 
                     # Add to serializer
