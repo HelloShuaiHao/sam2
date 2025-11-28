@@ -17,7 +17,7 @@ import ClearAllPointsInVideoButton from '@/common/components/annotations/ClearAl
 import ObjectThumbnail from '@/common/components/annotations/ObjectThumbnail';
 import {OBJECT_TOOLBAR_INDEX} from '@/common/components/toolbar/ToolbarConfig';
 import {BaseTracklet} from '@/common/tracker/Tracker';
-import {activeTrackletObjectIdAtom, trackletObjectsAtom} from '@/demo/atoms';
+import {activeTrackletObjectIdAtom, globalTrackletObjectsAtom} from '@/demo/atoms';
 import {spacing} from '@/theme/tokens.stylex';
 import stylex from '@stylexjs/stylex';
 import {useAtomValue, useSetAtom} from 'jotai';
@@ -45,7 +45,7 @@ export default function MobileObjectsList({
   showActiveObject,
   onTabChange,
 }: Props) {
-  const tracklets = useAtomValue(trackletObjectsAtom);
+  const tracklets = useAtomValue(globalTrackletObjectsAtom);
   const setActiveTrackletId = useSetAtom(activeTrackletObjectIdAtom);
 
   function handleSelectObject(tracklet: BaseTracklet) {

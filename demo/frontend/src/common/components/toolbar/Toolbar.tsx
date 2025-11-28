@@ -23,6 +23,7 @@ import {
   codeEditorOpenedAtom,
   isPlayingAtom,
   isStreamingAtom,
+  annotationModeAtom,
 } from '@/demo/atoms';
 import {useAtom, useAtomValue, useSetAtom} from 'jotai';
 import {useCallback, useEffect} from 'react';
@@ -36,6 +37,7 @@ export default function Toolbar() {
   const setIsPlaying = useSetAtom(isPlayingAtom);
   const [isStreaming, setIsStreaming] = useAtom(isStreamingAtom);
   const codeEditorOpened = useAtomValue(codeEditorOpenedAtom);
+  const annotationMode = useAtomValue(annotationModeAtom);
   const {isMobile} = useScreenSize();
   const setEffect = useVideoEffect();
 
@@ -83,6 +85,11 @@ export default function Toolbar() {
   }, [video, resetEffects, setIsStreaming, setIsPlaying]);
 
   if (codeEditorOpened) {
+    return null;
+  }
+
+  // 只在物体标注模式下显示 Toolbar
+  if (annotationMode !== 'object') {
     return null;
   }
 

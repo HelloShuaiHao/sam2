@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import ActionSegmentPanel from '@/common/components/actions/ActionSegmentPanel';
 import Toolbar from '@/common/components/toolbar/Toolbar';
 import DemoVideoEditor from '@/common/components/video/editor/DemoVideoEditor';
 import useInputVideo from '@/common/components/video/useInputVideo';
@@ -58,6 +59,8 @@ export default function DemoPage() {
   return (
     <DemoPageLayout>
       <StatsView />
+      {/* 左侧动作片段管理面板 */}
+      <ActionSegmentPanel />
       <Toolbar />
       <DemoVideoEditor video={video} />
     </DemoPageLayout>
