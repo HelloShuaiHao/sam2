@@ -23,7 +23,6 @@ export default function TrackActionSegmentsButton() {
   const video = useVideo();
   const actionSegments = useAtomValue(actionSegmentsAtom);
   const [isTracking, setIsTracking] = useState(false);
-  const [trackingProgress, setTrackingProgress] = useState(0);
   const setActionSegments = useSetAtom(actionSegmentsAtom);
   const setSession = useSetAtom(sessionAtom);
 
@@ -46,10 +45,8 @@ export default function TrackActionSegmentsButton() {
     }
 
     setIsTracking(true);
-    setTrackingProgress(0);
 
     try {
-      let completedObjects = 0;
 
       // 遍历所有动作片段
       for (const segment of actionSegments) {
@@ -98,10 +95,6 @@ export default function TrackActionSegmentsButton() {
               segment.frameEnd,
             );
 
-            // 追踪完成，更新进度
-            completedObjects++;
-            setTrackingProgress(completedObjects / totalObjectsToTrack);
-
             // 更新物体状态
             setActionSegments(segments =>
               segments.map(seg =>
@@ -119,7 +112,7 @@ export default function TrackActionSegmentsButton() {
             );
 
             console.log(
-              `[TrackActionSegments] 完成追踪物体: ${obj.name} (${completedObjects}/${totalObjectsToTrack})`,
+              `[TrackActionSegments] 完成追踪物体: ${obj.name}`,
             );
           } catch (error) {
             console.error(
@@ -147,7 +140,7 @@ export default function TrackActionSegmentsButton() {
       }
 
       console.log(
-        `[TrackActionSegments] 全部追踪完成: ${completedObjects}/${totalObjectsToTrack} 个物体`,
+        `[TrackActionSegments] 全部追踪完成`,
       );
 
       // 标记session已运行过追踪
@@ -158,13 +151,11 @@ export default function TrackActionSegmentsButton() {
       );
     } finally {
       setIsTracking(false);
-      setTrackingProgress(0);
     }
   }, [
     video,
     isTracking,
     actionSegments,
-    totalObjectsToTrack,
     setActionSegments,
     setSession,
   ]);

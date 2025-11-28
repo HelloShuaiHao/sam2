@@ -275,8 +275,6 @@ export default function ActionSegmentPanel() {
 
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState<string>('');
-  const [isTrackingAll, setIsTrackingAll] = useState<boolean>(false);
-  const [trackingProgress, setTrackingProgress] = useState<number>(0);
 
   // 格式化时间显示 - 所有 Hooks 必须在条件 return 之前调用
   const formatTime = useCallback(
@@ -387,105 +385,6 @@ export default function ActionSegmentPanel() {
     setIsAddingActionObject(false);
     setActiveActionObjectId(null);
   }, [setIsAddingActionObject, setActiveActionObjectId]);
-
-  // 批量追踪当前片段的所有物体
-  const handleTrackAllObjects = useCallback(
-    async (segment: ActionSegment) => {
-      if (!video || segment.objects.length === 0) {
-        return;
-      }
-
-      setIsTrackingAll(true);
-      setTrackingProgress(0);
-
-      try {
-        const totalObjects = segment.objects.length;
-        let completedObjects = 0;
-
-        // 逐个追踪物体
-        for (const obj of segment.objects) {
-          // 检查物体是否有标注点
-          const hasPoints = obj.points.some(framePoints => framePoints && framePoints.length > 0);
-
-          if (!hasPoints) {
-            console.warn(`[ActionSegmentPanel] 物体 ${obj.name} 没有标注点，跳过追踪`);
-            completedObjects++;
-            setTrackingProgress(completedObjects / totalObjects);
-            continue;
-          }
-
-          // 更新物体状态为正在追踪
-          setActionSegments(segments =>
-            segments.map(seg =>
-              seg.id === segment.id
-                ? {
-                    ...seg,
-                    objects: seg.objects.map(o =>
-                      o.id === obj.id
-                        ? {...o, isTracking: true, trackingProgress: 0}
-                        : o,
-                    ),
-                  }
-                : seg,
-            ),
-          );
-
-          // 调用追踪方法
-          try {
-            await video.trackObjectInSegment(
-              obj.id,
-              segment.id,
-              segment.frameStart,
-              segment.frameEnd,
-            );
-
-            // 追踪完成，更新进度
-            completedObjects++;
-            setTrackingProgress(completedObjects / totalObjects);
-
-            // 更新物体状态
-            setActionSegments(segments =>
-              segments.map(seg =>
-                seg.id === segment.id
-                  ? {
-                      ...seg,
-                      objects: seg.objects.map(o =>
-                        o.id === obj.id
-                          ? {...o, isTracking: false, trackingProgress: 1}
-                          : o,
-                      ),
-                    }
-                  : seg,
-              ),
-            );
-          } catch (error) {
-            console.error(`[ActionSegmentPanel] 追踪物体 ${obj.name} 失败:`, error);
-            // 追踪失败，重置状态
-            setActionSegments(segments =>
-              segments.map(seg =>
-                seg.id === segment.id
-                  ? {
-                      ...seg,
-                      objects: seg.objects.map(o =>
-                        o.id === obj.id
-                          ? {...o, isTracking: false, trackingProgress: 0}
-                          : o,
-                      ),
-                    }
-                  : seg,
-              ),
-            );
-          }
-        }
-
-        console.log(`[ActionSegmentPanel] 批量追踪完成: ${completedObjects}/${totalObjects} 个物体`);
-      } finally {
-        setIsTrackingAll(false);
-        setTrackingProgress(0);
-      }
-    },
-    [video, setActionSegments],
-  );
 
   // 只在动作模式下显示 - 条件判断必须在所有 Hooks 之后
   if (annotationMode !== 'action') {

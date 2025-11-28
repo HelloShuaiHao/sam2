@@ -257,33 +257,6 @@ export default function ActionSegmentObjectItem({
     [object, segmentId, activeObjectId, setActionSegments, setActiveObjectId],
   );
 
-  // Copy object
-  const handleCopy = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      setActionSegments(segments =>
-        segments.map(seg =>
-          seg.id === segmentId
-            ? {
-                ...seg,
-                objects: [
-                  ...seg.objects,
-                  {
-                    ...object,
-                    id: Date.now(), // Generate new unique ID
-                    name: `${object.name} (Copy)`,
-                    isTracking: false,
-                    trackingProgress: 0,
-                  },
-                ],
-              }
-            : seg,
-        ),
-      );
-    },
-    [object, segmentId, setActionSegments],
-  );
-
   // Track object within segment
   const handleTrack = useCallback(
     async (e: React.MouseEvent) => {
