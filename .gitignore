@@ -10,6 +10,7 @@ outputs/*
 checkpoints/*.pt
 demo/backend/checkpoints/*.pt
 demo/data/exports/*
+demo/data/gallery/*
 
 # Training output and cache
 demo/training/output/training_data/
