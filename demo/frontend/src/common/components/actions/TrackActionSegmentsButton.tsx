@@ -16,7 +16,7 @@
 import PrimaryCTAButton from '@/common/components/button/PrimaryCTAButton';
 import useVideo from '@/common/components/video/editor/useVideo';
 import {actionSegmentsAtom, sessionAtom} from '@/demo/atoms';
-import {useAtom, useAtomValue, useSetAtom} from 'jotai';
+import {useAtomValue, useSetAtom} from 'jotai';
 import {useCallback, useState} from 'react';
 
 export default function TrackActionSegmentsButton() {
@@ -24,7 +24,7 @@ export default function TrackActionSegmentsButton() {
   const actionSegments = useAtomValue(actionSegmentsAtom);
   const [isTracking, setIsTracking] = useState(false);
   const [trackingProgress, setTrackingProgress] = useState(0);
-  const [actionSegmentsState, setActionSegments] = useAtom(actionSegmentsAtom);
+  const setActionSegments = useSetAtom(actionSegmentsAtom);
   const setSession = useSetAtom(sessionAtom);
 
   // 计算有标注点的物体总数

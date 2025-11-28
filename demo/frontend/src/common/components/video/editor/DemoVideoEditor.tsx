@@ -124,7 +124,7 @@ export default function DemoVideoEditor({video: inputVideo}: Props) {
   // 动作片段相关状态
   const annotationMode = useAtomValue(annotationModeAtom);
   const activeActionSegment = useAtomValue(activeActionSegmentAtom);
-  const [actionSegments, setActionSegments] = useAtom(actionSegmentsAtom);
+  const setActionSegments = useSetAtom(actionSegmentsAtom);
   const [activeActionObjectId, setActiveActionObjectId] = useAtom(
     activeActionObjectIdAtom,
   );

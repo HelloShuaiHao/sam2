@@ -40,6 +40,8 @@ import {
   TrackerResponseMessageEvent,
   TrackletCreatedResponse,
   TrackletDeletedResponse,
+  TrackObjectInSegmentRequest,
+  TrackObjectInSegmentResponse,
   UpdatePointsRequest,
 } from '@/common/tracker/TrackerTypes';
 import {TrackerOptions, Trackers} from '@/common/tracker/Trackers';
@@ -132,6 +134,10 @@ export interface ClearPointsInVideoEvent {
   isSuccessful: boolean;
 }
 
+export interface TrackObjectInSegmentEvent {
+  isSuccessful: boolean;
+}
+
 export interface StreamingStartedEvent {}
 
 export interface StreamingCompletedEvent {}
@@ -160,6 +166,7 @@ export interface VideoWorkerEventMap {
   trackletDeleted: TrackletDeletedEvent;
   addPoints: AddPointsEvent;
   clearPointsInVideo: ClearPointsInVideoEvent;
+  trackObjectInSegment: TrackObjectInSegmentEvent;
   streamingStarted: StreamingStartedEvent;
   streamingCompleted: StreamingCompletedEvent;
   streamingStateUpdate: StreamingStateUpdateEvent;
@@ -439,6 +446,37 @@ export default class VideoWorkerBridge extends EventEmitter<VideoWorkerEventMap>
       };
       this.worker.addEventListener('message', handleResponse);
       this.sendRequest<ClearPointsInVideoRequest>('clearPointsInVideo');
+    });
+  }
+
+  trackObjectInSegment(
+    objectId: number,
+    segmentId: string,
+    frameStart: number,
+    frameEnd: number,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const handleResponse = (
+        event: MessageEvent<TrackObjectInSegmentResponse>,
+      ) => {
+        if (event.data.action === 'trackObjectInSegment') {
+          this.worker.removeEventListener('message', handleResponse);
+          if (event.data.isSuccessful) {
+            resolve();
+          } else {
+            reject(
+              `Failed to track object ${objectId} in segment ${segmentId}`,
+            );
+          }
+        }
+      };
+      this.worker.addEventListener('message', handleResponse);
+      this.sendRequest<TrackObjectInSegmentRequest>('trackObjectInSegment', {
+        objectId,
+        segmentId,
+        frameStart,
+        frameEnd,
+      });
     });
   }
 

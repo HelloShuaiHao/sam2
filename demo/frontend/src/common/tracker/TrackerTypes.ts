@@ -26,6 +26,7 @@ import {
   TrackletCreatedEvent,
   TrackletDeletedEvent,
   TrackletsEvent,
+  TrackObjectInSegmentEvent,
 } from '../components/video/VideoWorkerBridge';
 
 export type Flags = {
@@ -84,6 +85,16 @@ export type StreamMasksRequest = Request<
 >;
 export type AbortStreamMasksRequest = Request<'abortStreamMasks', unknown>;
 
+export type TrackObjectInSegmentRequest = Request<
+  'trackObjectInSegment',
+  {
+    objectId: number;
+    segmentId: string;
+    frameStart: number;
+    frameEnd: number;
+  }
+>;
+
 export type LogAnnotationsRequest = Request<'logAnnotations', unknown>;
 
 export type TrackerRequest =
@@ -97,6 +108,7 @@ export type TrackerRequest =
   | ClearPointsInVideoRequest
   | StreamMasksRequest
   | AbortStreamMasksRequest
+  | TrackObjectInSegmentRequest
   | LogAnnotationsRequest;
 
 export type TrackerRequestMessageEvent = MessageEvent<TrackerRequest>;
@@ -135,6 +147,11 @@ export type ClearPointsInVideoResponse = Request<
   ClearPointsInVideoEvent
 >;
 
+export type TrackObjectInSegmentResponse = Request<
+  'trackObjectInSegment',
+  TrackObjectInSegmentEvent
+>;
+
 export type StreamingStartedResponse = Request<
   'streamingStarted',
   StreamingStartedEvent
@@ -158,6 +175,7 @@ export type TrackerResponse =
   | TrackletDeletedResponse
   | AddPointsResponse
   | ClearPointsInVideoResponse
+  | TrackObjectInSegmentResponse
   | StreamingStartedResponse
   | StreamingCompletedResponse
   | StreamingStateUpdateResponse;

@@ -853,16 +853,27 @@ export class SAM2Model extends Tracker {
     frameStart: number,
     frameEnd: number,
   ): Promise<void> {
-    // TODO: Implement backend support for segment-scoped tracking
-    // For now, this is a stub that will call streamMasks
-    // The backend needs to be updated to accept frameStart/frameEnd parameters
     Logger.info(
       `Tracking object ${objectId} in segment ${segmentId} from frame ${frameStart} to ${frameEnd}`,
     );
 
-    // This will be implemented when backend support is added
-    // The idea is to call a modified version of streamMasks that only propagates within the range
-    return Promise.resolve();
+    try {
+      // Use the regular streamMasks functionality
+      // Note: The backend propagates through all frames, but we track the segment bounds on the frontend
+      await this.streamMasks(frameStart);
+
+      // Send success response back to the main thread
+      this._sendResponse('trackObjectInSegment', {
+        isSuccessful: true,
+      });
+    } catch (error) {
+      Logger.error('Error tracking object in segment:', error);
+      // Send failure response
+      this._sendResponse('trackObjectInSegment', {
+        isSuccessful: false,
+      });
+      throw error;
+    }
   }
 
   /**

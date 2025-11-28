@@ -126,6 +126,16 @@ self.addEventListener(
         case 'clearPointsInVideo':
           await tracker?.clearPointsInVideo();
           break;
+        case 'trackObjectInSegment': {
+          const {objectId, segmentId, frameStart, frameEnd} = event.data;
+          await tracker?.trackObjectInSegment(
+            objectId,
+            segmentId,
+            frameStart,
+            frameEnd,
+          );
+          break;
+        }
         case 'streamMasks': {
           const {frameIndex} = event.data;
           context.allowEffectAnimation(false);

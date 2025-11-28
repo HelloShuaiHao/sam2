@@ -18,14 +18,13 @@ import {
   ActionSegmentObject,
   actionSegmentsAtom,
   activeActionSegmentObjectIdAtom,
-  activeActionSegmentIdAtom,
   frameIndexAtom,
 } from '@/demo/atoms';
 import stylex from '@stylexjs/stylex';
 import {useAtom, useSetAtom} from 'jotai';
 import {useState, useCallback} from 'react';
 import useVideo from '@/common/components/video/editor/useVideo';
-import {TrashCan, Copy, Maximize} from '@carbon/icons-react';
+import {TrashCan, Copy} from '@carbon/icons-react';
 
 const styles = stylex.create({
   container: {
@@ -158,7 +157,6 @@ export default function ActionSegmentObjectItem({
 }: Props) {
   const video = useVideo();
   const [actionSegments, setActionSegments] = useAtom(actionSegmentsAtom);
-  const [activeSegmentId] = useAtom(activeActionSegmentIdAtom);
   const [activeObjectId, setActiveObjectId] = useAtom(
     activeActionSegmentObjectIdAtom,
   );

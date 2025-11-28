@@ -23,7 +23,6 @@ import {
   isAddingActionObjectAtom,
   activeActionObjectIdAtom,
   activeActionSegmentObjectIdAtom,
-  sessionAtom,
 } from '@/demo/atoms';
 import stylex from '@stylexjs/stylex';
 import {useAtom, useAtomValue, useSetAtom} from 'jotai';

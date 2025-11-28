@@ -91,6 +91,7 @@ export type VideoRef = {
   get frame(): number;
   set frame(index: number);
   get numberOfFrames(): number;
+  get fps(): number;
   play(): void;
   pause(): void;
   stop(): void;
@@ -122,6 +123,12 @@ export type VideoRef = {
   deleteTracklet(trackletId: number): Promise<void>;
   updatePoints(trackletId: number, points: SegmentationPoint[]): void;
   clearPointsInVideo(): Promise<boolean>;
+  trackObjectInSegment(
+    objectId: number,
+    segmentId: string,
+    frameStart: number,
+    frameEnd: number,
+  ): Promise<void>;
   getWorker_ONLY_USE_WITH_CAUTION(): Worker;
 };
 
@@ -178,6 +185,9 @@ export default forwardRef<VideoRef, Props>(function Video(
       },
       get numberOfFrames() {
         return bridge.numberOfFrames;
+      },
+      get fps() {
+        return bridge.fps;
       },
       play(): void {
         bridge.play();
@@ -249,6 +259,19 @@ export default forwardRef<VideoRef, Props>(function Video(
       },
       clearPointsInVideo(): Promise<boolean> {
         return bridge.clearPointsInVideo();
+      },
+      trackObjectInSegment(
+        objectId: number,
+        segmentId: string,
+        frameStart: number,
+        frameEnd: number,
+      ): Promise<void> {
+        return bridge.trackObjectInSegment(
+          objectId,
+          segmentId,
+          frameStart,
+          frameEnd,
+        );
       },
       getWorker_ONLY_USE_WITH_CAUTION() {
         return bridge.getWorker_ONLY_USE_WITH_CAUTION();
