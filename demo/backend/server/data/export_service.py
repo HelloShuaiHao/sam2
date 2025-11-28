@@ -628,8 +628,8 @@ class ExportService:
             session_id=job["session_id"],
             status=job["status"],
             target_fps=job["target_fps"],
-            total_frames=job.get("estimated_frames", job["total_frames"]),
-            processed_frames=job["processed_frames"],
+            total_frames=job.get("total_frames", job.get("estimated_frames", 0)),
+            processed_frames=job.get("processed_frames", 0),
             progress=job["progress"],
             created_at=job["created_at"],
             completed_at=job.get("completed_at"),
@@ -766,8 +766,7 @@ class ExportService:
             return ExportResult(
                 job_id=job_id,
                 status=ExportJobStatus.PENDING,
-                message="Action segment export job created",
-                segment_count=len(action_segments)
+                message="Action segment export job created"
             )
 
         except Exception as e:
@@ -829,24 +828,46 @@ class ExportService:
                 # Sample frames within segment range
                 segment_duration = (frame_end - frame_start + 1) / source_fps
                 sampler = FrameSampler(source_fps, frame_end - frame_start + 1, segment_duration)
-                frame_indices = sampler.get_export_frames(target_fps)
+                frame_indices = sampler.calculate_frame_indices(target_fps)
 
                 # Adjust frame indices to absolute positions
                 absolute_frame_indices = [f + frame_start for f in frame_indices]
 
+                # Create video metadata for this segment
+                video_metadata = {
+                    "filename": f"segment_{segment_name}_{segment_id}.mp4",
+                    "width": inference_state.get("video_width", 1920),
+                    "height": inference_state.get("video_height", 1080),
+                    "fps": source_fps,
+                    "total_frames": frame_end - frame_start + 1,
+                    "duration_sec": segment_duration
+                }
+
+                # Initialize annotation serializer
+                serializer = AnnotationSerializer(video_metadata)
+
                 # Extract segment annotations
-                serializer = AnnotationSerializer(inference_state, session_id)
-                annotations = []
-
                 for abs_frame_idx in absolute_frame_indices:
-                    frame_annotation = serializer.serialize_frame(
+                    # Get frame annotations
+                    frame_objects = self._get_frame_annotations(
+                        inference_api,
+                        inference_state,
                         abs_frame_idx,
-                        object_ids=[obj["object_id"] for obj in objects],
-                        object_names={obj["object_id"]: obj["label"] for obj in objects}
+                        {str(obj["object_id"]): obj["label"] for obj in objects}
                     )
-                    annotations.append(frame_annotation)
 
-                # Write segment metadata
+                    # Add to serializer
+                    timestamp_sec = (abs_frame_idx - frame_start) / source_fps
+                    serializer.add_frame_annotation(
+                        frame_index=abs_frame_idx - frame_start,  # Relative to segment start
+                        timestamp_sec=timestamp_sec,
+                        objects=frame_objects
+                    )
+
+                # Get annotations from serializer
+                annotations = serializer.annotations
+
+                # Create segment metadata
                 segment_metadata = {
                     "segment_id": segment_id,
                     "segment_name": segment_name,
@@ -864,6 +885,7 @@ class ExportService:
                     "format_version": "2.0"
                 }
 
+                # Write segment metadata
                 with open(segment_dir / f"action_segment_{segment_id}.json", "w") as f:
                     json.dump(segment_metadata, f, indent=2)
 
@@ -871,14 +893,19 @@ class ExportService:
                 with open(segment_dir / "annotations.json", "w") as f:
                     json.dump(annotations, f, indent=2)
 
+                # Get statistics
+                stats = serializer.get_statistics()
+
                 # Write metadata
                 metadata = create_metadata_file(
-                    session_id=session_id,
-                    video_path=inference_state.get("video_path", ""),
-                    target_fps=target_fps,
-                    total_frames=len(absolute_frame_indices),
-                    export_type="action_segment",
-                    segment_info=segment_metadata
+                    video_metadata,
+                    {
+                        "target_fps": target_fps,
+                        "frame_indices": absolute_frame_indices,
+                        "export_type": "action_segment",
+                        "segment_info": segment_metadata
+                    },
+                    stats
                 )
                 with open(segment_dir / "metadata.json", "w") as f:
                     json.dump(metadata, f, indent=2)

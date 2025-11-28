@@ -845,7 +845,7 @@ export class SAM2Model extends Tracker {
 
   /**
    * Track an object within a specific action segment frame range.
-   * This is a wrapper around streamMasks that limits propagation to the segment bounds.
+   * This uses the segment-scoped tracking API that limits propagation to the segment bounds.
    */
   public async trackObjectInSegment(
     objectId: number,
@@ -857,10 +857,51 @@ export class SAM2Model extends Tracker {
       `Tracking object ${objectId} in segment ${segmentId} from frame ${frameStart} to ${frameEnd}`,
     );
 
+    const sessionId = this._session.id;
+    if (sessionId === null) {
+      this._sendResponse('trackObjectInSegment', {
+        isSuccessful: false,
+      });
+      return Promise.reject('No active session');
+    }
+
     try {
-      // Use the regular streamMasks functionality
-      // Note: The backend propagates through all frames, but we track the segment bounds on the frontend
-      await this.streamMasks(frameStart);
+      this._sendResponse<StreamingStartedResponse>('streamingStarted');
+
+      // Clear previous masks
+      this._context.clearMasks();
+      this._clearTrackletMasks();
+
+      // Create abort controller and async generator
+      const controller = new AbortController();
+      this.abortController = controller;
+
+      this._updateStreamingState('requesting');
+      const generator = this._streamMasksForSegment(
+        controller,
+        sessionId,
+        frameStart,
+        frameEnd,
+        frameStart, // Start from the beginning of the segment
+      );
+
+      // Parse stream response and update masks
+      let isAborted = false;
+      for await (const result of generator) {
+        if ('aborted' in result) {
+          this._updateStreamingState('aborting');
+          await this._abortRequest();
+          this._updateStreamingState('aborted');
+          isAborted = true;
+        } else {
+          await this._updateTrackletMasks(result, false);
+          this._updateStreamingState('partial');
+        }
+      }
+
+      if (!isAborted) {
+        this._updateStreamingState('full');
+      }
 
       // Send success response back to the main thread
       this._sendResponse('trackObjectInSegment', {
@@ -873,6 +914,91 @@ export class SAM2Model extends Tracker {
         isSuccessful: false,
       });
       throw error;
+    } finally {
+      this._sendResponse<StreamingCompletedResponse>('streamingCompleted');
+    }
+  }
+
+  /**
+   * Stream masks for a specific segment range.
+   */
+  private async *_streamMasksForSegment(
+    abortController: AbortController,
+    sessionId: string,
+    frameStart: number,
+    frameEnd: number,
+    startFrameIndex: number = 0,
+  ): AsyncGenerator<StreamMasksResult | StreamMasksAbortResult, undefined> {
+    const url = `${this._endpoint}/propagate_in_segment`;
+
+    const requestBody = {
+      session_id: sessionId,
+      frame_start: frameStart,
+      frame_end: frameEnd,
+      start_frame_index: startFrameIndex,
+    };
+
+    const headers: {[name: string]: string} = Object.assign({
+      'Content-Type': 'application/json',
+    });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      body: JSON.stringify(requestBody),
+      headers,
+    });
+
+    const contentType = response.headers.get('Content-Type');
+    if (
+      contentType == null ||
+      !contentType.startsWith('multipart/x-savi-stream;')
+    ) {
+      throw new Error(
+        'endpoint needs to support Content-Type "multipart/x-savi-stream"',
+      );
+    }
+
+    const responseBody = response.body;
+    if (responseBody == null) {
+      throw new Error('response body is null');
+    }
+
+    const reader = multipartStream(contentType, responseBody).getReader();
+
+    const textDecoder = new TextDecoder();
+
+    while (true) {
+      if (abortController.signal.aborted) {
+        reader.releaseLock();
+        yield {aborted: true};
+        return;
+      }
+
+      const {done, value} = await reader.read();
+      if (done) {
+        return;
+      }
+
+      const {headers, body} = value;
+
+      const contentType = headers.get('Content-Type') as string;
+
+      if (contentType.startsWith('application/json')) {
+        const jsonResponse = JSON.parse(textDecoder.decode(body));
+        const maskResults = jsonResponse.results;
+        const rleMaskList = maskResults.map(
+          (mask: {object_id: number; mask: RLEObject}) => {
+            return {
+              objectId: mask.object_id,
+              rleMask: mask.mask,
+            };
+          },
+        );
+        yield {
+          frameIndex: jsonResponse.frame_index,
+          rleMaskList,
+        };
+      }
     }
   }
 

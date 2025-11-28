@@ -300,7 +300,7 @@ class PropagateInSegmentInput:
 @strawberry.input
 class ActionSegmentObjectInput:
     """Input for action segment object data."""
-    object_id: int
+    objectId: int = strawberry.field(name="objectId")
     label: str
     color: str
 
@@ -310,9 +310,9 @@ class ActionSegmentDataInput:
     """Input for action segment data."""
     id: str
     name: str
-    frame_start: int
-    frame_end: int
-    created_at: int
+    frameStart: int = strawberry.field(name="frameStart")
+    frameEnd: int = strawberry.field(name="frameEnd")
+    createdAt: float = strawberry.field(name="createdAt")  # Use float to support large timestamps
     objects: List[ActionSegmentObjectInput]
 
 

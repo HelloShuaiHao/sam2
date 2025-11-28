@@ -80,11 +80,11 @@ export default function useActionSegmentExport(sessionId: string | null) {
         const segmentsData = segmentsToExport.map(seg => ({
           id: seg.id,
           name: seg.name,
-          frame_start: seg.frameStart,
-          frame_end: seg.frameEnd,
-          created_at: seg.createdAt,
+          frameStart: seg.frameStart,
+          frameEnd: seg.frameEnd,
+          createdAt: seg.createdAt,
           objects: seg.objects.map(obj => ({
-            object_id: obj.id,
+            objectId: obj.id,
             label: obj.name,
             color: obj.color,
           })),

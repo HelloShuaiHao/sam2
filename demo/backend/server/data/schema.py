@@ -385,12 +385,12 @@ class Mutation:
                 {
                     "id": seg.id,
                     "name": seg.name,
-                    "frame_start": seg.frame_start,
-                    "frame_end": seg.frame_end,
-                    "created_at": seg.created_at,
+                    "frame_start": seg.frameStart,
+                    "frame_end": seg.frameEnd,
+                    "created_at": int(seg.createdAt),  # Convert float to int for storage
                     "objects": [
                         {
-                            "object_id": obj.object_id,
+                            "object_id": obj.objectId,
                             "label": obj.label,
                             "color": obj.color,
                         }

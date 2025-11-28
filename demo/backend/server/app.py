@@ -131,6 +131,47 @@ def propagate_in_video() -> Response:
     return Response(frame, mimetype="multipart/x-savi-stream; boundary=" + boundary)
 
 
+@app.route("/propagate_in_segment", methods=["POST"])
+def propagate_in_segment() -> Response:
+    """
+    Propagate masks within a specific frame range (action segment).
+
+    Request body:
+        session_id: str - The session ID
+        frame_start: int - Start frame of the segment (inclusive)
+        frame_end: int - End frame of the segment (inclusive)
+        start_frame_index: int - Frame to start propagation from
+    """
+    data = request.json
+    session_id = data["session_id"]
+    frame_start = data["frame_start"]
+    frame_end = data["frame_end"]
+    start_frame_index = data.get("start_frame_index", frame_start)
+
+    boundary = "frame"
+
+    def gen_segment_stream() -> Generator[bytes, None, None]:
+        with inference_api.autocast_context():
+            for chunk in inference_api.propagate_in_segment(
+                session_id=session_id,
+                frame_start=frame_start,
+                frame_end=frame_end,
+                start_frame_idx=start_frame_index,
+            ):
+                yield MultipartResponseBuilder.build(
+                    boundary=boundary,
+                    headers={
+                        "Content-Type": "application/json; charset=utf-8",
+                        "Frame-Current": str(chunk.frame_index),
+                        "Frame-Total": str(frame_end - frame_start + 1),
+                        "Mask-Type": "RLE[]",
+                    },
+                    body=chunk.to_json().encode("UTF-8"),
+                ).get_message()
+
+    return Response(gen_segment_stream(), mimetype="multipart/x-savi-stream; boundary=" + boundary)
+
+
 def gen_track_with_mask_stream(
     boundary: str,
     session_id: str,

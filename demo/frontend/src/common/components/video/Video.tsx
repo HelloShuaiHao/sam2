@@ -30,7 +30,7 @@ import {Button} from 'react-daisyui';
 import {EffectIndex, Effects} from '@/common/components/video/effects/Effects';
 import useReportError from '@/common/error/useReportError';
 import Logger from '@/common/logger/Logger';
-import {isPlayingAtom, isVideoLoadingAtom} from '@/demo/atoms';
+import {isPlayingAtom, isVideoLoadingAtom, streamingStateAtom} from '@/demo/atoms';
 import {color} from '@/theme/tokens.stylex';
 import {useAtom} from 'jotai';
 import useResizeObserver from 'use-resize-observer';
@@ -149,6 +149,7 @@ export default forwardRef<VideoRef, Props>(function Video(
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isPlaying, setIsPlaying] = useAtom(isPlayingAtom);
   const [isVideoLoading, setIsVideoLoading] = useAtom(isVideoLoadingAtom);
+  const [, setStreamingState] = useAtom(streamingStateAtom);
 
   const bridge = useVideoWorker(src, canvasRef, {
     createVideoWorker,
@@ -317,6 +318,9 @@ export default forwardRef<VideoRef, Props>(function Video(
     }
 
     function onStreamingDone(event: StreamingStateUpdateEvent) {
+      // Update the streaming state atom
+      setStreamingState(event.state);
+
       // continue to play after streaming is done (state is "full")
       if (event.state === 'full') {
         bridge.play();
@@ -349,7 +353,7 @@ export default forwardRef<VideoRef, Props>(function Video(
       bridge.removeEventListener('loadstart', onLoadStart);
       bridge.removeEventListener('decode', onDecodeStart);
     };
-  }, [bridge, reportError, setIsPlaying, setIsVideoLoading]);
+  }, [bridge, reportError, setIsPlaying, setIsVideoLoading, setStreamingState]);
 
   return (
     <div
