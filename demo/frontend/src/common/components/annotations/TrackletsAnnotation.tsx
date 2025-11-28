@@ -17,8 +17,10 @@ import TrackletSwimlane from '@/common/components/annotations/TrackletSwimlane';
 import useTracklets from '@/common/components/annotations/useTracklets';
 import useVideo from '@/common/components/video/editor/useVideo';
 import {BaseTracklet} from '@/common/tracker/Tracker';
+import {annotationModeAtom} from '@/demo/atoms';
 import {m, spacing} from '@/theme/tokens.stylex';
 import stylex from '@stylexjs/stylex';
+import {useAtomValue} from 'jotai';
 
 const styles = stylex.create({
   container: {
@@ -34,11 +36,17 @@ const styles = stylex.create({
 export default function TrackletsAnnotation() {
   const video = useVideo();
   const tracklets = useTracklets();
+  const annotationMode = useAtomValue(annotationModeAtom);
 
   function handleSelectFrame(_tracklet: BaseTracklet, index: number) {
     if (video !== null) {
       video.frame = index;
     }
+  }
+
+  // Hide in action mode
+  if (annotationMode === 'action') {
+    return null;
   }
 
   return (

@@ -71,9 +71,9 @@ const styles = stylex.create({
   },
   dropdownMenu: {
     position: 'absolute',
-    top: '100%',
+    bottom: '100%',
     left: 0,
-    marginTop: '4px',
+    marginBottom: '4px',
     backgroundColor: 'rgba(30, 30, 30, 0.95)',
     border: '1px solid rgba(255, 255, 255, 0.2)',
     borderRadius: '6px',
