@@ -946,7 +946,7 @@ class ExportService:
             # Update job status
             job["status"] = ExportJobStatus.COMPLETED
             job["progress"] = 1.0
-            job["download_url"] = f"{API_URL}/api/exports/{job_id}/download"
+            job["download_url"] = f"{API_URL}/api/download/export/{job_id}"
             job["completed_at"] = datetime.now().isoformat()
 
             logger.info(f"Action segment export job {job_id} completed successfully")

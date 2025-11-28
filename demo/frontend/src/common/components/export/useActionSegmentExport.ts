@@ -238,8 +238,14 @@ export default function useActionSegmentExport(sessionId: string | null) {
 
   const downloadExport = useCallback(async () => {
     if (exportState.downloadUrl && exportState.jobId) {
-      // Trigger download
-      window.location.href = exportState.downloadUrl;
+      // Create a hidden anchor element to trigger download without navigation
+      const link = document.createElement('a');
+      link.href = exportState.downloadUrl;
+      link.download = `sam2_export_${exportState.jobId}.zip`;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
       // Wait a bit to ensure download starts, then delete the export file
       setTimeout(async () => {
