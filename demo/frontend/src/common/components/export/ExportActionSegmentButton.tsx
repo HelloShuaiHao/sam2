@@ -19,7 +19,6 @@ import {useAtomValue} from 'jotai';
 import {actionSegmentsAtom, sessionAtom} from '@/demo/atoms';
 import useActionSegmentExport from './useActionSegmentExport';
 import {FrameRateOption} from './FrameRateSelector';
-import {DocumentArrowDown} from '@carbon/icons-react';
 import stylex from '@stylexjs/stylex';
 
 const styles = stylex.create({
@@ -216,8 +215,7 @@ export default function ExportActionSegmentButton({targetFps = 30}: Props) {
           <button
             {...stylex.props(styles.downloadButton)}
             onClick={handleDownload}>
-            <DocumentArrowDown size={20} />
-            下载动作片段标注 ({exportState.segmentCount} 个片段)
+            📥 下载动作片段标注 ({exportState.segmentCount} 个片段)
           </button>
         )}
 
@@ -236,8 +234,7 @@ export default function ExportActionSegmentButton({targetFps = 30}: Props) {
         <button
           {...stylex.props(styles.dropdownButton)}
           onClick={() => setShowDropdown(!showDropdown)}>
-          <DocumentArrowDown size={20} />
-          导出动作片段标注
+          📥 导出动作片段标注
         </button>
 
         {showDropdown && (
