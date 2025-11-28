@@ -257,42 +257,6 @@ export default function ActionSegmentObjectItem({
     [object, segmentId, activeObjectId, setActionSegments, setActiveObjectId],
   );
 
-  // Track object within segment
-  const handleTrack = useCallback(
-    async (e: React.MouseEvent) => {
-      e.stopPropagation();
-
-      const segment = actionSegments.find(s => s.id === segmentId);
-      if (!segment) return;
-
-      // TODO: Implement segment-scoped tracking
-      // For now, just toggle tracking state
-      setActionSegments(segments =>
-        segments.map(seg =>
-          seg.id === segmentId
-            ? {
-                ...seg,
-                objects: seg.objects.map(obj =>
-                  obj.id === object.id
-                    ? {...obj, isTracking: !obj.isTracking}
-                    : obj,
-                ),
-              }
-            : seg,
-        ),
-      );
-
-      // Call backend tracking method
-      // await video?.trackObjectInSegment(
-      //   object.id,
-      //   segmentId,
-      //   segment.frameStart,
-      //   segment.frameEnd
-      // );
-    },
-    [object.id, segmentId, actionSegments, setActionSegments],
-  );
-
   // Count annotated frames
   const annotatedFrames = object.points.filter(p => p && p.length > 0).length;
   const trackedFrames = object.masks.filter(m => !m.isEmpty).length;
@@ -352,29 +316,9 @@ export default function ActionSegmentObjectItem({
         )}
       </div>
 
-      {/* Track button and progress */}
-      <div>
-        <button
-          {...stylex.props(
-            styles.trackButton,
-            object.isTracking && styles.tracking,
-          )}
-          onClick={handleTrack}>
-          {object.isTracking ? '⏸ 停止追踪' : '▶ 追踪'}
-        </button>
-
-        {object.isTracking && (
-          <div {...stylex.props(styles.progressBar)}>
-            <div
-              {...stylex.props(styles.progressFill)}
-              style={{width: `${object.trackingProgress * 100}%`}}
-            />
-          </div>
-        )}
-
-        <div {...stylex.props(styles.info)}>
-          标注: {annotatedFrames} 帧 | 追踪: {trackedFrames} 帧
-        </div>
+      {/* Info */}
+      <div {...stylex.props(styles.info)}>
+        标注: {annotatedFrames} 帧 | 追踪: {trackedFrames} 帧
       </div>
     </div>
   );

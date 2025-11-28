@@ -31,6 +31,7 @@ import useVideo from '@/common/components/video/editor/useVideo';
 import ActionSegmentObjectItem from './ActionSegmentObjectItem';
 import ExportActionSegmentButton from '@/common/components/export/ExportActionSegmentButton';
 import TrackActionSegmentsButton from './TrackActionSegmentsButton';
+import {Add} from '@carbon/icons-react';
 
 
 const styles = stylex.create({
@@ -52,11 +53,12 @@ const styles = stylex.create({
     gap: '12px',
   },
   bottomActions: {
-    paddingTop: '12px',
+    paddingTop: '8px',
     borderTop: '1px solid rgba(255, 255, 255, 0.1)',
     display: 'flex',
     flexDirection: 'column',
     gap: '8px',
+    alignItems: 'center',
   },
   header: {
     fontSize: '16px',
@@ -210,7 +212,7 @@ const styles = stylex.create({
     padding: '20px',
   },
   addObjectButton: {
-    padding: '6px 12px',
+    padding: '8px',
     fontSize: '12px',
     backgroundColor: 'rgba(59, 130, 246, 0.4)',
     color: '#fff',
@@ -219,6 +221,9 @@ const styles = stylex.create({
     cursor: 'pointer',
     marginTop: '8px',
     width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     ':hover': {
       backgroundColor: 'rgba(59, 130, 246, 0.6)',
     },
@@ -476,8 +481,9 @@ export default function ActionSegmentPanel() {
                     {!isAddingActionObject ? (
                       <button
                         {...stylex.props(styles.addObjectButton)}
-                        onClick={handleStartAddObject}>
-                        + 添加物体
+                        onClick={handleStartAddObject}
+                        title="添加物体">
+                        <Add size={20} />
                       </button>
                     ) : (
                       <div

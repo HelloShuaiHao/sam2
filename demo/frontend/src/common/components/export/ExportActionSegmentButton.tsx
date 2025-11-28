@@ -20,6 +20,7 @@ import {actionSegmentsAtom, sessionAtom} from '@/demo/atoms';
 import useActionSegmentExport from './useActionSegmentExport';
 import {FrameRateOption} from './FrameRateSelector';
 import stylex from '@stylexjs/stylex';
+import PrimaryCTAButton from '@/common/components/button/PrimaryCTAButton';
 
 const styles = stylex.create({
   container: {
@@ -231,11 +232,10 @@ export default function ExportActionSegmentButton({targetFps = 30}: Props) {
   return (
     <div {...stylex.props(styles.container)}>
       <div {...stylex.props(styles.dropdown)}>
-        <button
-          {...stylex.props(styles.dropdownButton)}
+        <PrimaryCTAButton
           onClick={() => setShowDropdown(!showDropdown)}>
-          📥 导出动作片段标注
-        </button>
+          导出标注
+        </PrimaryCTAButton>
 
         {showDropdown && (
           <div {...stylex.props(styles.dropdownMenu)}>
