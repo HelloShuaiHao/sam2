@@ -273,6 +273,16 @@ export const currentSegmentObjectsAtom = atom<ActionSegmentObject[]>(get => {
   return activeSegment?.objects ?? [];
 });
 
+// 派生 atom：获取当前选中动作物体在当前帧的points
+export const activeActionObjectPointsAtom = atom<SegmentationPoint[]>(get => {
+  const activeObject = get(activeActionSegmentObjectAtom);
+  const frameIndex = get(frameIndexAtom);
+  if (!activeObject) {
+    return [];
+  }
+  return activeObject.points[frameIndex] ?? [];
+});
+
 // 动作片段导出配置
 export type ActionExportConfig = {
   segmentIds: string[]; // 要导出的片段ID列表，空数组表示导出全部
