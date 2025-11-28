@@ -31,6 +31,8 @@ import {useCallback, useState} from 'react';
 import useVideo from '@/common/components/video/editor/useVideo';
 import ActionSegmentObjectItem from './ActionSegmentObjectItem';
 import ExportActionSegmentButton from '@/common/components/export/ExportActionSegmentButton';
+import TrackActionSegmentsButton from './TrackActionSegmentsButton';
+
 
 const styles = stylex.create({
   panel: {
@@ -42,7 +44,20 @@ const styles = stylex.create({
     display: 'flex',
     flexDirection: 'column',
     gap: '12px',
+  },
+  scrollableContent: {
+    flex: 1,
     overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
+  bottomActions: {
+    paddingTop: '12px',
+    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
   },
   header: {
     fontSize: '16px',
@@ -174,6 +189,44 @@ const styles = stylex.create({
       backgroundColor: 'rgba(59, 130, 246, 0.6)',
     },
   },
+  trackAllButton: {
+    padding: '8px 12px',
+    fontSize: '12px',
+    backgroundColor: 'rgba(168, 85, 247, 0.6)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    marginTop: '8px',
+    width: '100%',
+    fontWeight: '600',
+    ':hover': {
+      backgroundColor: 'rgba(168, 85, 247, 0.8)',
+    },
+    ':disabled': {
+      opacity: 0.5,
+      cursor: 'not-allowed',
+    },
+  },
+  trackingProgress: {
+    marginTop: '8px',
+    fontSize: '11px',
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
+  },
+  progressBar: {
+    width: '100%',
+    height: '4px',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: '2px',
+    marginTop: '4px',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: 'rgba(168, 85, 247, 1)',
+    transition: 'width 0.3s ease',
+  },
 });
 
 export default function ActionSegmentPanel() {
@@ -192,6 +245,8 @@ export default function ActionSegmentPanel() {
 
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState<string>('');
+  const [isTrackingAll, setIsTrackingAll] = useState<boolean>(false);
+  const [trackingProgress, setTrackingProgress] = useState<number>(0);
 
   // 格式化时间显示 - 所有 Hooks 必须在条件 return 之前调用
   const formatTime = useCallback(
@@ -303,6 +358,105 @@ export default function ActionSegmentPanel() {
     setActiveActionObjectId(null);
   }, [setIsAddingActionObject, setActiveActionObjectId]);
 
+  // 批量追踪当前片段的所有物体
+  const handleTrackAllObjects = useCallback(
+    async (segment: ActionSegment) => {
+      if (!video || segment.objects.length === 0) {
+        return;
+      }
+
+      setIsTrackingAll(true);
+      setTrackingProgress(0);
+
+      try {
+        const totalObjects = segment.objects.length;
+        let completedObjects = 0;
+
+        // 逐个追踪物体
+        for (const obj of segment.objects) {
+          // 检查物体是否有标注点
+          const hasPoints = obj.points.some(framePoints => framePoints && framePoints.length > 0);
+
+          if (!hasPoints) {
+            console.warn(`[ActionSegmentPanel] 物体 ${obj.name} 没有标注点，跳过追踪`);
+            completedObjects++;
+            setTrackingProgress(completedObjects / totalObjects);
+            continue;
+          }
+
+          // 更新物体状态为正在追踪
+          setActionSegments(segments =>
+            segments.map(seg =>
+              seg.id === segment.id
+                ? {
+                    ...seg,
+                    objects: seg.objects.map(o =>
+                      o.id === obj.id
+                        ? {...o, isTracking: true, trackingProgress: 0}
+                        : o,
+                    ),
+                  }
+                : seg,
+            ),
+          );
+
+          // 调用追踪方法
+          try {
+            await video.trackObjectInSegment(
+              obj.id,
+              segment.id,
+              segment.frameStart,
+              segment.frameEnd,
+            );
+
+            // 追踪完成，更新进度
+            completedObjects++;
+            setTrackingProgress(completedObjects / totalObjects);
+
+            // 更新物体状态
+            setActionSegments(segments =>
+              segments.map(seg =>
+                seg.id === segment.id
+                  ? {
+                      ...seg,
+                      objects: seg.objects.map(o =>
+                        o.id === obj.id
+                          ? {...o, isTracking: false, trackingProgress: 1}
+                          : o,
+                      ),
+                    }
+                  : seg,
+              ),
+            );
+          } catch (error) {
+            console.error(`[ActionSegmentPanel] 追踪物体 ${obj.name} 失败:`, error);
+            // 追踪失败，重置状态
+            setActionSegments(segments =>
+              segments.map(seg =>
+                seg.id === segment.id
+                  ? {
+                      ...seg,
+                      objects: seg.objects.map(o =>
+                        o.id === obj.id
+                          ? {...o, isTracking: false, trackingProgress: 0}
+                          : o,
+                      ),
+                    }
+                  : seg,
+              ),
+            );
+          }
+        }
+
+        console.log(`[ActionSegmentPanel] 批量追踪完成: ${completedObjects}/${totalObjects} 个物体`);
+      } finally {
+        setIsTrackingAll(false);
+        setTrackingProgress(0);
+      }
+    },
+    [video, setActionSegments],
+  );
+
   // 只在动作模式下显示 - 条件判断必须在所有 Hooks 之后
   if (annotationMode !== 'action') {
     return null;
@@ -312,18 +466,20 @@ export default function ActionSegmentPanel() {
     <div {...stylex.props(styles.panel)}>
       <div {...stylex.props(styles.header)}>动作片段</div>
 
-      {/* Export button - shown when there are action segments */}
-      {actionSegments.length > 0 && (
-        <ExportActionSegmentButton targetFps={30} />
-      )}
+      {/* Scrollable content area */}
+      <div {...stylex.props(styles.scrollableContent)}>
+        {/* Export button - shown when there are action segments */}
+        {actionSegments.length > 0 && (
+          <ExportActionSegmentButton targetFps={30} />
+        )}
 
-      {actionSegments.length === 0 ? (
-        <div {...stylex.props(styles.emptyState)}>
-          在时间轴上拖动鼠标选择时间段
-          <br />
-          开始创建动作片段
-        </div>
-      ) : (
+        {actionSegments.length === 0 ? (
+          <div {...stylex.props(styles.emptyState)}>
+            在时间轴上拖动鼠标选择时间段
+            <br />
+            开始创建动作片段
+          </div>
+        ) : (
         <div {...stylex.props(styles.segmentList)}>
           {actionSegments.map(segment => {
             const isActive = segment.id === activeSegmentId;
@@ -377,16 +533,50 @@ export default function ActionSegmentPanel() {
 
                 {/* 物体列表 */}
                 {segment.objects.length > 0 && (
-                  <div {...stylex.props(styles.objectList)}>
-                    {segment.objects.map(obj => (
-                      <ActionSegmentObjectItem
-                        key={obj.id}
-                        object={obj}
-                        segmentId={segment.id}
-                        isActive={activeObjectId === obj.id}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    <div {...stylex.props(styles.objectList)}>
+                      {segment.objects.map(obj => (
+                        <ActionSegmentObjectItem
+                          key={obj.id}
+                          object={obj}
+                          segmentId={segment.id}
+                          isActive={activeObjectId === obj.id}
+                        />
+                      ))}
+                    </div>
+
+                    {/* 批量追踪按钮 - 只在活跃片段且有物体时显示 */}
+                    {isActive && (
+                      <>
+                        <button
+                          {...stylex.props(styles.trackAllButton)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleTrackAllObjects(segment);
+                          }}
+                          disabled={isTrackingAll}>
+                          {isTrackingAll
+                            ? `⏳ 追踪中... ${Math.round(trackingProgress * 100)}%`
+                            : `🚀 追踪所有物体 (${segment.objects.length})`}
+                        </button>
+
+                        {/* 追踪进度条 */}
+                        {isTrackingAll && (
+                          <>
+                            <div {...stylex.props(styles.progressBar)}>
+                              <div
+                                {...stylex.props(styles.progressFill)}
+                                style={{width: `${trackingProgress * 100}%`}}
+                              />
+                            </div>
+                            <div {...stylex.props(styles.trackingProgress)}>
+                              正在追踪物体，请稍候...
+                            </div>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </>
                 )}
 
                 {/* 添加物体按钮 */}
@@ -433,6 +623,12 @@ export default function ActionSegmentPanel() {
           })}
         </div>
       )}
+      </div>
+
+      {/* Bottom fixed actions */}
+      <div {...stylex.props(styles.bottomActions)}>
+        <TrackActionSegmentsButton />
+      </div>
     </div>
   );
 }
