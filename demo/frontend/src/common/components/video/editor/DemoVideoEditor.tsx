@@ -53,6 +53,7 @@ import {
   actionSegmentsAtom,
   activeActionObjectIdAtom,
   isAddingActionObjectAtom,
+  activeActionObjectPointsAtom,
 } from '@/demo/atoms';
 import useSettingsContext from '@/settings/useSettingsContext';
 import {color, spacing} from '@/theme/tokens.stylex';
@@ -113,6 +114,7 @@ export default function DemoVideoEditor({video: inputVideo}: Props) {
   const setTrackletObjects = useSetAtom(trackletObjectsAtom);
   const setFrameIndex = useSetAtom(frameIndexAtom);
   const points = useAtomValue(pointsAtom);
+  const actionObjectPoints = useAtomValue(activeActionObjectPointsAtom);
   const isAddObjectEnabled = useAtomValue(isAddObjectEnabledAtom);
   const streamingState = useAtomValue(streamingStateAtom);
   const isPlaying = useAtomValue(isPlayingAtom);
@@ -287,8 +289,48 @@ export default function DemoVideoEditor({video: inputVideo}: Props) {
       return;
     }
 
-    // 如果没有活跃的片段物体，创建新物体
-    if (activeActionObjectId === null) {
+    // 如果有选中的物体（编辑模式），向该物体添加点
+    if (activeActionObjectId !== null) {
+      const existingObject = activeActionSegment.objects.find(
+        obj => obj.id === activeActionObjectId,
+      );
+      if (existingObject) {
+        // 获取当前帧的现有点
+        const currentFramePoints = existingObject.points[frameIndex] ?? [];
+        const newPoints = [...currentFramePoints, point];
+
+        // 更新视频中的点
+        video?.updatePoints(activeActionObjectId, newPoints);
+
+        // 更新状态中的点
+        setActionSegments(segments =>
+          segments.map(seg =>
+            seg.id === activeActionSegment.id
+              ? {
+                  ...seg,
+                  objects: seg.objects.map(obj =>
+                    obj.id === activeActionObjectId
+                      ? {
+                          ...obj,
+                          points: (() => {
+                            const updatedPoints = [...obj.points];
+                            updatedPoints[frameIndex] = newPoints;
+                            return updatedPoints;
+                          })(),
+                        }
+                      : obj,
+                  ),
+                }
+              : seg,
+          ),
+        );
+        enqueueMessage('pointClick');
+      }
+      return;
+    }
+
+    // 如果没有活跃的片段物体，创建新物体（仅在isAddingActionObject为true时）
+    if (activeActionObjectId === null && isAddingActionObject) {
       // 创建新的 tracklet（临时的，仅用于该片段）
       const tracklet = await video?.createTracklet();
       if (tracklet != null) {
@@ -299,8 +341,15 @@ export default function DemoVideoEditor({video: inputVideo}: Props) {
           id: tracklet.id,
           name: `物体 ${activeActionSegment.objects.length + 1}`,
           color,
-          points: [], // 将在下面更新
+          points: (() => {
+            const pts: SegmentationPoint[][] = [];
+            pts[frameIndex] = [point];
+            return pts;
+          })(), // 初始化points数组，在当前帧索引设置点
           masks: [],
+          isTracking: false,
+          trackingProgress: 0,
+          thumbnail: null,
         };
 
         // 添加第一个点
@@ -321,16 +370,58 @@ export default function DemoVideoEditor({video: inputVideo}: Props) {
         // 成功添加物体后，退出添加模式
         setIsAddingActionObject(false);
       }
-    } else {
-      // 向现有物体添加点
-      const existingObject = activeActionSegment.objects.find(
-        obj => obj.id === activeActionObjectId,
+    }
+  }
+
+  // === 动作片段模式：删除物体点 ===
+  function handleRemoveActionObjectPoint(point: SegmentationPoint) {
+    if (
+      isPlaying ||
+      streamingState === 'partial' ||
+      streamingState === 'requesting'
+    ) {
+      return;
+    }
+
+    // 必须有活跃的片段和选中的物体
+    if (!activeActionSegment || activeActionObjectId === null) {
+      return;
+    }
+
+    const frameIndex = video?.frame ?? 0;
+    const existingObject = activeActionSegment.objects.find(
+      obj => obj.id === activeActionObjectId,
+    );
+
+    if (existingObject) {
+      const currentFramePoints = existingObject.points[frameIndex] ?? [];
+      const newPoints = currentFramePoints.filter(p => p !== point);
+
+      // 更新视频中的点
+      video?.updatePoints(activeActionObjectId, newPoints);
+
+      // 更新状态中的点
+      setActionSegments(segments =>
+        segments.map(seg =>
+          seg.id === activeActionSegment.id
+            ? {
+                ...seg,
+                objects: seg.objects.map(obj =>
+                  obj.id === activeActionObjectId
+                    ? {
+                        ...obj,
+                        points: (() => {
+                          const updatedPoints = [...obj.points];
+                          updatedPoints[frameIndex] = newPoints;
+                          return updatedPoints;
+                        })(),
+                      }
+                    : obj,
+                ),
+              }
+            : seg,
+        ),
       );
-      if (existingObject) {
-        // TODO: 获取当前帧的现有点并添加新点
-        video?.updatePoints(activeActionObjectId, [point]);
-        enqueueMessage('pointClick');
-      }
     }
   }
 
@@ -365,16 +456,23 @@ export default function DemoVideoEditor({video: inputVideo}: Props) {
           />
         </>
       )}
-      {/* 动作标注模式 - 只在"添加物体"状态下显示 InteractionLayer */}
+      {/* 动作标注模式 - 添加物体或编辑选中物体时显示 InteractionLayer */}
       {annotationMode === 'action' &&
         activeActionSegment != null &&
-        isAddingActionObject && (
+        (isAddingActionObject || activeActionObjectId !== null) && (
           <>
             <InteractionLayer
               key="action-interaction-layer"
               onPoint={point => handleAddPointInActionSegment(point)}
             />
-            {/* TODO: 渲染动作片段内物体的点 */}
+            {/* 显示选中动作物体的点 */}
+            {activeActionObjectId !== null && (
+              <PointsLayer
+                key="action-points-layer"
+                points={actionObjectPoints}
+                onRemovePoint={handleRemoveActionObjectPoint}
+              />
+            )}
           </>
         )}
       {!isMobile && <MessagesSnackbar key="snackbar-layer" />}
