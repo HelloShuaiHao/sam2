@@ -604,7 +604,7 @@ class InferenceAPI:
             return True
 
     def propagate_in_segment(
-        self, session_id: str, frame_start: int, frame_end: int, start_frame_idx: int
+        self, session_id: str, frame_start: int, frame_end: int, start_frame_idx: int, object_id: int = None
     ) -> Generator[PropagateDataResponse, None, None]:
         """
         Propagate masks within a specific frame range (action segment).
@@ -616,6 +616,7 @@ class InferenceAPI:
             frame_start: Start frame of the segment (inclusive)
             frame_end: End frame of the segment (inclusive)
             start_frame_idx: Frame to start propagation from
+            object_id: Optional specific object ID to track (filters to only this object)
 
         Yields:
             PropagateDataResponse for frames within [frame_start, frame_end]
@@ -623,7 +624,7 @@ class InferenceAPI:
         with self.autocast_context(), self.inference_lock:
             logger.info(
                 f"propagate in segment in session {session_id}: "
-                f"frame_start={frame_start}, frame_end={frame_end}, start_frame_idx={start_frame_idx}"
+                f"frame_start={frame_start}, frame_end={frame_end}, start_frame_idx={start_frame_idx}, object_id={object_id}"
             )
 
             try:
@@ -657,6 +658,19 @@ class InferenceAPI:
                                 (video_res_masks > self.score_thresh)[:, 0].detach().cpu().numpy()
                             )
                             del video_res_masks
+
+                            # Filter to specific object if requested
+                            if object_id is not None:
+                                # Find the index of the requested object_id
+                                try:
+                                    obj_idx = obj_ids.index(object_id)
+                                    # Filter to only this object
+                                    obj_ids = [object_id]
+                                    masks_binary = masks_binary[obj_idx:obj_idx+1]
+                                except ValueError:
+                                    # Object not found in this frame, skip yielding
+                                    logger.debug(f"Object {object_id} not found in frame {frame_idx}")
+                                    continue
 
                             rle_mask_list = self.__get_rle_mask_list(
                                 object_ids=obj_ids, masks=masks_binary
@@ -694,6 +708,19 @@ class InferenceAPI:
                                 (video_res_masks > self.score_thresh)[:, 0].detach().cpu().numpy()
                             )
                             del video_res_masks
+
+                            # Filter to specific object if requested
+                            if object_id is not None:
+                                # Find the index of the requested object_id
+                                try:
+                                    obj_idx = obj_ids.index(object_id)
+                                    # Filter to only this object
+                                    obj_ids = [object_id]
+                                    masks_binary = masks_binary[obj_idx:obj_idx+1]
+                                except ValueError:
+                                    # Object not found in this frame, skip yielding
+                                    logger.debug(f"Object {object_id} not found in frame {frame_idx}")
+                                    continue
 
                             rle_mask_list = self.__get_rle_mask_list(
                                 object_ids=obj_ids, masks=masks_binary

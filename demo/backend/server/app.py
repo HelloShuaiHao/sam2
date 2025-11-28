@@ -141,12 +141,14 @@ def propagate_in_segment() -> Response:
         frame_start: int - Start frame of the segment (inclusive)
         frame_end: int - End frame of the segment (inclusive)
         start_frame_index: int - Frame to start propagation from
+        object_id: int (optional) - Specific object ID to track (filters to only this object)
     """
     data = request.json
     session_id = data["session_id"]
     frame_start = data["frame_start"]
     frame_end = data["frame_end"]
     start_frame_index = data.get("start_frame_index", frame_start)
+    object_id = data.get("object_id")  # Optional: filter to specific object
 
     boundary = "frame"
 
@@ -157,6 +159,7 @@ def propagate_in_segment() -> Response:
                 frame_start=frame_start,
                 frame_end=frame_end,
                 start_frame_idx=start_frame_index,
+                object_id=object_id,
             ):
                 yield MultipartResponseBuilder.build(
                     boundary=boundary,

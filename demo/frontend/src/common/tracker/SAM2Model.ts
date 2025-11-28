@@ -883,6 +883,7 @@ export class SAM2Model extends Tracker {
         frameStart,
         frameEnd,
         frameStart, // Start from the beginning of the segment
+        objectId, // Pass the object ID to only track this specific object
       );
 
       // Parse stream response and update masks
@@ -928,6 +929,7 @@ export class SAM2Model extends Tracker {
     frameStart: number,
     frameEnd: number,
     startFrameIndex: number = 0,
+    objectId?: number,
   ): AsyncGenerator<StreamMasksResult | StreamMasksAbortResult, undefined> {
     const url = `${this._endpoint}/propagate_in_segment`;
 
@@ -936,6 +938,7 @@ export class SAM2Model extends Tracker {
       frame_start: frameStart,
       frame_end: frameEnd,
       start_frame_index: startFrameIndex,
+      object_id: objectId, // Pass the specific object ID to track
     };
 
     const headers: {[name: string]: string} = Object.assign({
