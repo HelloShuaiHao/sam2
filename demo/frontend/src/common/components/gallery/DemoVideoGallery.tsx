@@ -144,23 +144,6 @@ export default function DemoVideoGallery({
     }));
   }, [allVideos]);
 
-  const shareableVideos: VideoPhotoData[] = useMemo(() => {
-    const filteredVideos = [...allVideos];
-
-    if (showUploadInGallery) {
-      const uploadOption = {
-        src: '',
-        width: 1280,
-        height: 720,
-        poster: '',
-        isUploadOption: true,
-      } as VideoPhotoData;
-      filteredVideos.unshift(uploadOption);
-    }
-
-    return filteredVideos;
-  }, [allVideos, showUploadInGallery]);
-
   const renderPhoto = ({
     photo: video,
     imageProps,
