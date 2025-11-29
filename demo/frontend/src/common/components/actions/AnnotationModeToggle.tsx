@@ -20,12 +20,13 @@ import {
   activeActionObjectIdAtom,
   isAddingActionObjectAtom,
   actionSegmentsAtom,
-  globalTrackletObjectsAtom,
+  trackletObjectsAtom,
 } from '@/demo/atoms';
 import useVideo from '@/common/components/video/editor/useVideo';
 import stylex from '@stylexjs/stylex';
 import {useAtom, useSetAtom, useAtomValue} from 'jotai';
 import {useCallback} from 'react';
+import {BaseTracklet} from '@/common/tracker/Tracker';
 
 const styles = stylex.create({
   container: {
@@ -68,7 +69,7 @@ export default function AnnotationModeToggle() {
   const setActiveActionObjectId = useSetAtom(activeActionObjectIdAtom);
   const setIsAddingActionObject = useSetAtom(isAddingActionObjectAtom);
   const actionSegments = useAtomValue(actionSegmentsAtom);
-  const setGlobalTracklets = useSetAtom(globalTrackletObjectsAtom);
+  const setTrackletObjects = useSetAtom(trackletObjectsAtom);
   const video = useVideo();
 
   const handleModeChange = useCallback(
@@ -79,7 +80,7 @@ export default function AnnotationModeToggle() {
         setActiveActionObjectId(null);
         setIsAddingActionObject(false);
 
-        // Remove action segment object tracklets from global tracklet list
+        // Remove action segment object tracklets from tracklet list
         const actionObjectIds = new Set<number>();
         actionSegments.forEach(segment => {
           segment.objects.forEach(obj => {
@@ -88,9 +89,9 @@ export default function AnnotationModeToggle() {
         });
 
         if (actionObjectIds.size > 0) {
-          // Remove these tracklets from global list and video
-          setGlobalTracklets(prev =>
-            prev.filter(tracklet => !actionObjectIds.has(tracklet.id)),
+          // Remove these tracklets from tracklet list and video
+          setTrackletObjects((prev: BaseTracklet[]) =>
+            prev.filter((tracklet: BaseTracklet) => !actionObjectIds.has(tracklet.id)),
           );
 
           // Also remove these tracklets from video
@@ -107,7 +108,7 @@ export default function AnnotationModeToggle() {
       setActiveActionObjectId,
       setIsAddingActionObject,
       actionSegments,
-      setGlobalTracklets,
+      setTrackletObjects,
       video,
     ],
   );
