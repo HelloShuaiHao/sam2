@@ -24,7 +24,7 @@ import {
 } from '@/demo/atoms';
 import useVideo from '@/common/components/video/editor/useVideo';
 import stylex from '@stylexjs/stylex';
-import {useAtom, useSetAtom} from 'jotai';
+import {useAtom, useSetAtom, useAtomValue} from 'jotai';
 import {useCallback} from 'react';
 
 const styles = stylex.create({
@@ -67,8 +67,8 @@ export default function AnnotationModeToggle() {
   const setActiveActionSegmentObjectId = useSetAtom(activeActionSegmentObjectIdAtom);
   const setActiveActionObjectId = useSetAtom(activeActionObjectIdAtom);
   const setIsAddingActionObject = useSetAtom(isAddingActionObjectAtom);
-  const actionSegments = useAtom(actionSegmentsAtom)[0];
-  const [globalTracklets, setGlobalTracklets] = useAtom(globalTrackletObjectsAtom);
+  const actionSegments = useAtomValue(actionSegmentsAtom);
+  const setGlobalTracklets = useSetAtom(globalTrackletObjectsAtom);
   const video = useVideo();
 
   const handleModeChange = useCallback(
@@ -88,15 +88,14 @@ export default function AnnotationModeToggle() {
         });
 
         if (actionObjectIds.size > 0) {
-          // Filter out tracklets that belong to action segments
-          const filteredTracklets = globalTracklets.filter(
-            tracklet => !actionObjectIds.has(tracklet.id),
+          // Remove these tracklets from global list and video
+          setGlobalTracklets(prev =>
+            prev.filter(tracklet => !actionObjectIds.has(tracklet.id)),
           );
-          setGlobalTracklets(filteredTracklets);
 
           // Also remove these tracklets from video
           actionObjectIds.forEach(id => {
-            video?.removeObject(id);
+            video?.deleteTracklet(id);
           });
         }
       }
@@ -108,7 +107,6 @@ export default function AnnotationModeToggle() {
       setActiveActionObjectId,
       setIsAddingActionObject,
       actionSegments,
-      globalTracklets,
       setGlobalTracklets,
       video,
     ],
