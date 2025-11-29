@@ -73,7 +73,7 @@ export default function AnnotationModeToggle() {
   const video = useVideo();
 
   const handleModeChange = useCallback(
-    (newMode: 'object' | 'action') => {
+    async (newMode: 'object' | 'action') => {
       // Clear action-related state when switching to object mode
       if (newMode === 'object') {
         setActiveActionSegmentObjectId(null);
@@ -88,16 +88,21 @@ export default function AnnotationModeToggle() {
           });
         });
 
-        if (actionObjectIds.size > 0) {
+        if (actionObjectIds.size > 0 && video) {
           // Remove these tracklets from tracklet list and video
           setTrackletObjects((prev: BaseTracklet[]) =>
             prev.filter((tracklet: BaseTracklet) => !actionObjectIds.has(tracklet.id)),
           );
 
-          // Also remove these tracklets from video
-          actionObjectIds.forEach(id => {
-            video?.deleteTracklet(id);
-          });
+          // Also remove these tracklets from video (async, with error handling)
+          for (const id of actionObjectIds) {
+            try {
+              await video.deleteTracklet(id);
+            } catch (error) {
+              console.warn(`Failed to delete tracklet ${id}:`, error);
+              // Continue deleting other tracklets even if one fails
+            }
+          }
         }
       }
       setMode(newMode);
