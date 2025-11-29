@@ -14,9 +14,14 @@
  * limitations under the License.
  */
 
-import {annotationModeAtom} from '@/demo/atoms';
+import {
+  annotationModeAtom,
+  activeActionSegmentObjectIdAtom,
+  activeActionObjectIdAtom,
+  isAddingActionObjectAtom,
+} from '@/demo/atoms';
 import stylex from '@stylexjs/stylex';
-import {useAtom} from 'jotai';
+import {useAtom, useSetAtom} from 'jotai';
 import {useCallback} from 'react';
 
 const styles = stylex.create({
@@ -56,12 +61,21 @@ const styles = stylex.create({
 
 export default function AnnotationModeToggle() {
   const [mode, setMode] = useAtom(annotationModeAtom);
+  const setActiveActionSegmentObjectId = useSetAtom(activeActionSegmentObjectIdAtom);
+  const setActiveActionObjectId = useSetAtom(activeActionObjectIdAtom);
+  const setIsAddingActionObject = useSetAtom(isAddingActionObjectAtom);
 
   const handleModeChange = useCallback(
     (newMode: 'object' | 'action') => {
+      // Clear action-related state when switching to object mode
+      if (newMode === 'object') {
+        setActiveActionSegmentObjectId(null);
+        setActiveActionObjectId(null);
+        setIsAddingActionObject(false);
+      }
       setMode(newMode);
     },
-    [setMode],
+    [setMode, setActiveActionSegmentObjectId, setActiveActionObjectId, setIsAddingActionObject],
   );
 
   return (
