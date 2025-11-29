@@ -16,6 +16,7 @@
 import {DemoVideoGalleryQuery} from '@/common/components/gallery/__generated__/DemoVideoGalleryQuery.graphql';
 import VideoGalleryUploadVideo from '@/common/components/gallery/VideoGalleryUploadPhoto';
 import VideoPhoto from '@/common/components/gallery/VideoPhoto';
+import {Timeline} from '@/common/components/gallery/Timeline';
 import useScreenSize from '@/common/screen/useScreenSize';
 import {VideoData} from '@/demo/atoms';
 import {DEMO_SHORT_NAME} from '@/demo/DemoConfig';
@@ -92,6 +93,7 @@ export default function DemoVideoGallery({
               height
               width
               posterUrl
+              date
             }
           }
         }
@@ -100,7 +102,7 @@ export default function DemoVideoGallery({
     {},
   );
 
-  const allVideos: VideoPhotoData[] = useMemo(() => {
+  const allVideos: (VideoPhotoData & {date?: string | null})[] = useMemo(() => {
     return data.videos.edges.map(video => {
       return {
         src: video.node.url,
@@ -111,10 +113,36 @@ export default function DemoVideoGallery({
         posterUrl: video.node.posterUrl,
         width: video.node.width,
         height: video.node.height,
+        date: video.node.date,
         isUploadOption: false,
-      } as VideoPhotoData;
+      } as VideoPhotoData & {date?: string | null};
     });
   }, [data.videos.edges]);
+
+  // Group videos by date (newest first)
+  const videosByDate = useMemo(() => {
+    const grouped = new Map<string, typeof allVideos>();
+
+    allVideos.forEach(video => {
+      const date = video.date || 'No Date';
+      if (!grouped.has(date)) {
+        grouped.set(date, []);
+      }
+      grouped.get(date)!.push(video);
+    });
+
+    // Sort dates in descending order (newest first)
+    const sortedDates = Array.from(grouped.keys()).sort((a, b) => {
+      if (a === 'No Date') return 1;
+      if (b === 'No Date') return -1;
+      return b.localeCompare(a); // Descending order
+    });
+
+    return sortedDates.map(date => ({
+      date,
+      videos: grouped.get(date)!,
+    }));
+  }, [allVideos]);
 
   const shareableVideos: VideoPhotoData[] = useMemo(() => {
     const filteredVideos = [...allVideos];
@@ -175,6 +203,42 @@ export default function DemoVideoGallery({
 
   const descriptionStyle = 'text-sm md:text-base text-gray-400 leading-snug';
 
+  // Create timeline data from videosByDate
+  const timelineData = useMemo(() => {
+    return videosByDate.map(({date, videos}) => {
+      // Add upload option to the first (newest) date group if enabled
+      const isFirstGroup = videosByDate[0].date === date;
+      const videosToShow = isFirstGroup && showUploadInGallery
+        ? [{
+            src: '',
+            width: 1280,
+            height: 720,
+            poster: '',
+            isUploadOption: true,
+          } as VideoPhotoData, ...videos]
+        : videos;
+
+      return {
+        title: date,
+        content: (
+          <div className="mb-8">
+            <PhotoAlbum<VideoPhotoData>
+              layout="rows"
+              photos={videosToShow}
+              targetRowHeight={isMobileScreenSize ? 120 : 200}
+              rowConstraints={{
+                singleRowMaxHeight: isMobileScreenSize ? 120 : 240,
+                maxPhotos: 3,
+              }}
+              renderPhoto={renderPhoto}
+              spacing={4}
+            />
+          </div>
+        ),
+      };
+    });
+  }, [videosByDate, showUploadInGallery, isMobileScreenSize, renderPhoto]);
+
   return (
     <div {...stylex.props(styles.container)}>
       <div {...stylex.props(styles.albumContainer)}>
@@ -187,21 +251,11 @@ export default function DemoVideoGallery({
               </span>
             </h3>
             <p className={descriptionStyle}>
-              You’ll be able to download what you make.
+              You'll be able to download what you make.
             </p>
           </div>
 
-          <PhotoAlbum<VideoPhotoData>
-            layout="rows"
-            photos={shareableVideos}
-            targetRowHeight={isMobileScreenSize ? 120 : 200}
-            rowConstraints={{
-              singleRowMaxHeight: isMobileScreenSize ? 120 : 240,
-              maxPhotos: 3,
-            }}
-            renderPhoto={renderPhoto}
-            spacing={4}
-          />
+          <Timeline data={timelineData} />
         </div>
       </div>
     </div>

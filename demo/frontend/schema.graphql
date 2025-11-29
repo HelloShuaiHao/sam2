@@ -176,6 +176,7 @@ type Video implements Node {
   height: Int!
   url: String!
   posterUrl: String!
+  date: String
 }
 
 """

@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import os
+import re
 import shutil
 import subprocess
 from glob import glob
@@ -50,6 +51,16 @@ def get_video(
     """
     # Use absolute_path to include the parent directory in the video
     video_path = os.path.relpath(filepath, absolute_path.parent)
+
+    # Extract date from folder structure (e.g., gallery/2025-01-15/video.mp4)
+    date = None
+    path_parts = Path(video_path).parts
+    for part in path_parts:
+        # Match YYYY-MM-DD format
+        if re.match(r'^\d{4}-\d{2}-\d{2}$', part):
+            date = part
+            break
+
     poster_path = None
     if generate_poster:
         poster_id = os.path.splitext(os.path.basename(filepath))[0]
@@ -89,4 +100,5 @@ def get_video(
         poster_path=poster_path,
         width=width,
         height=height,
+        date=date,
     )

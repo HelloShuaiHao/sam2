@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<20d31a82b5f3b251b0e42b4f0e3522b8>>
+ * @generated SignedSource<<142783abe9ece20bfd4d4935a6781c0c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,6 +14,7 @@ export type DemoVideoGalleryQuery$data = {
   readonly videos: {
     readonly edges: ReadonlyArray<{
       readonly node: {
+        readonly date: string | null | undefined;
         readonly height: number;
         readonly id: any;
         readonly path: string;
@@ -104,6 +105,13 @@ var v0 = [
                 "kind": "ScalarField",
                 "name": "width",
                 "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "date",
+                "storageKey": null
               }
             ],
             "storageKey": null
@@ -133,16 +141,16 @@ return {
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "4dae74153a5528f2631b59dfb0adb021",
+    "cacheID": "573b05f983de7f97771cdee3094e694a",
     "id": null,
     "metadata": {},
     "name": "DemoVideoGalleryQuery",
     "operationKind": "query",
-    "text": "query DemoVideoGalleryQuery {\n  videos {\n    edges {\n      node {\n        id\n        path\n        posterPath\n        url\n        posterUrl\n        height\n        width\n      }\n    }\n  }\n}\n"
+    "text": "query DemoVideoGalleryQuery {\n  videos {\n    edges {\n      node {\n        id\n        path\n        posterPath\n        url\n        posterUrl\n        height\n        width\n        date\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d22ac5e58f6e4eb696651be49b410e4e";
+(node as any).hash = "b6c53560bda6fbed177a92b6ae37c78a";
 
 export default node;

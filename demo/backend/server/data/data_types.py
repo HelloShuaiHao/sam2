@@ -23,6 +23,7 @@ class Video(relay.Node):
     poster_path: Optional[str]
     width: int
     height: int
+    date: Optional[str] = None  # Date folder (YYYY-MM-DD format)
 
     @strawberry.field
     def url(self) -> str:
