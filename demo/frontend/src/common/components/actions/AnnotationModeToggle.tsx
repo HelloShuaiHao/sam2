@@ -19,7 +19,10 @@ import {
   activeActionSegmentObjectIdAtom,
   activeActionObjectIdAtom,
   isAddingActionObjectAtom,
+  actionSegmentsAtom,
+  globalTrackletObjectsAtom,
 } from '@/demo/atoms';
+import useVideo from '@/common/components/video/editor/useVideo';
 import stylex from '@stylexjs/stylex';
 import {useAtom, useSetAtom} from 'jotai';
 import {useCallback} from 'react';
@@ -64,6 +67,9 @@ export default function AnnotationModeToggle() {
   const setActiveActionSegmentObjectId = useSetAtom(activeActionSegmentObjectIdAtom);
   const setActiveActionObjectId = useSetAtom(activeActionObjectIdAtom);
   const setIsAddingActionObject = useSetAtom(isAddingActionObjectAtom);
+  const actionSegments = useAtom(actionSegmentsAtom)[0];
+  const [globalTracklets, setGlobalTracklets] = useAtom(globalTrackletObjectsAtom);
+  const video = useVideo();
 
   const handleModeChange = useCallback(
     (newMode: 'object' | 'action') => {
@@ -72,10 +78,40 @@ export default function AnnotationModeToggle() {
         setActiveActionSegmentObjectId(null);
         setActiveActionObjectId(null);
         setIsAddingActionObject(false);
+
+        // Remove action segment object tracklets from global tracklet list
+        const actionObjectIds = new Set<number>();
+        actionSegments.forEach(segment => {
+          segment.objects.forEach(obj => {
+            actionObjectIds.add(obj.id);
+          });
+        });
+
+        if (actionObjectIds.size > 0) {
+          // Filter out tracklets that belong to action segments
+          const filteredTracklets = globalTracklets.filter(
+            tracklet => !actionObjectIds.has(tracklet.id),
+          );
+          setGlobalTracklets(filteredTracklets);
+
+          // Also remove these tracklets from video
+          actionObjectIds.forEach(id => {
+            video?.removeObject(id);
+          });
+        }
       }
       setMode(newMode);
     },
-    [setMode, setActiveActionSegmentObjectId, setActiveActionObjectId, setIsAddingActionObject],
+    [
+      setMode,
+      setActiveActionSegmentObjectId,
+      setActiveActionObjectId,
+      setIsAddingActionObject,
+      actionSegments,
+      globalTracklets,
+      setGlobalTracklets,
+      video,
+    ],
   );
 
   return (
