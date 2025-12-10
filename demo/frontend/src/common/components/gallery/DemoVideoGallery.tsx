@@ -149,7 +149,10 @@ export default function DemoVideoGallery({
     imageProps,
   }: RenderPhotoProps<VideoPhotoData>) => {
     const {style} = imageProps;
-    const {url, posterUrl} = video;
+    const {url, posterUrl, path} = video;
+
+    // Extract filename from path
+    const filename = path ? path.split('/').pop() : undefined;
 
     return video.isUploadOption ? (
       <VideoGalleryUploadVideo
@@ -163,6 +166,7 @@ export default function DemoVideoGallery({
         src={url}
         poster={posterUrl}
         style={style}
+        filename={filename}
         onClick={() => {
           navigate(location.pathname, {
             state: {

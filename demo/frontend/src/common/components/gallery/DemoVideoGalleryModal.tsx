@@ -24,7 +24,7 @@ import {spacing} from '@/theme/tokens.stylex';
 import {Close} from '@carbon/icons-react';
 import stylex from '@stylexjs/stylex';
 import {useSetAtom} from 'jotai';
-import {ComponentType, useCallback, useRef} from 'react';
+import {ComponentType, useCallback, useEffect, useRef} from 'react';
 import {Modal} from 'react-daisyui';
 import DemoVideoGallery from './DemoVideoGallery';
 
@@ -69,6 +69,7 @@ export type VideoGalleryTriggerProps = {
 type Props = {
   trigger?: ComponentType<VideoGalleryTriggerProps>;
   showUploadInGallery?: boolean;
+  openByDefault?: boolean;
   onOpen?: () => void;
   onSelect?: (video: VideoData, isUpload?: boolean) => void;
   onUploadVideoError?: (error: Error) => void;
@@ -77,6 +78,7 @@ type Props = {
 export default function DemoVideoGalleryModal({
   trigger: VideoGalleryModalTrigger = DefaultVideoGalleryModalTrigger,
   showUploadInGallery = false,
+  openByDefault = false,
   onOpen,
   onSelect,
   onUploadVideoError,
@@ -94,6 +96,14 @@ export default function DemoVideoGalleryModal({
       modal.showModal();
     }
   }
+
+  // Open modal by default on mount if openByDefault is true
+  useEffect(() => {
+    if (openByDefault) {
+      openModal();
+      onOpen?.();
+    }
+  }, [openByDefault, onOpen]);
 
   function closeModal() {
     const modal = modalRef.current;

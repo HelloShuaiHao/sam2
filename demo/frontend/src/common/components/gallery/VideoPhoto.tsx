@@ -29,10 +29,26 @@ const styles = stylex.create({
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     cursor: 'pointer',
+    position: 'relative',
   },
   video: {
     width: '100%',
     height: '100%',
+  },
+  filename: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    color: 'white',
+    padding: '8px',
+    fontSize: '12px',
+    fontWeight: '500',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    pointerEvents: 'none',
   },
 });
 
@@ -41,9 +57,10 @@ type Props = {
   src: string;
   poster: string;
   style: CSSProperties;
+  filename?: string;
 };
 
-export default function VideoPhoto({src, poster, style, onClick}: Props) {
+export default function VideoPhoto({src, poster, style, onClick, filename}: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playPromiseRef = useRef<Promise<void> | null>(null);
 
@@ -107,6 +124,7 @@ export default function VideoPhoto({src, poster, style, onClick}: Props) {
         <source src={src} type="video/mp4" />
         Sorry, your browser does not support embedded videos.
       </video>
+      {filename && <div {...stylex.props(styles.filename)}>{filename}</div>}
     </div>
   );
 }

@@ -25,12 +25,14 @@ import {useLocation, useNavigate} from 'react-router-dom';
 type Props = {
   videoGalleryModalTrigger?: ComponentType<VideoGalleryTriggerProps>;
   showUploadInGallery?: boolean;
+  openByDefault?: boolean;
   onChangeVideo?: () => void;
 };
 
 export default function ChangeVideoModal({
   videoGalleryModalTrigger: VideoGalleryModalTriggerComponent,
   showUploadInGallery = true,
+  openByDefault = false,
   onChangeVideo,
 }: Props) {
   const isStreaming = useAtomValue(isStreamingAtom);
@@ -76,6 +78,7 @@ export default function ChangeVideoModal({
     <DemoVideoGalleryModal
       trigger={VideoGalleryModalTriggerComponent}
       showUploadInGallery={showUploadInGallery}
+      openByDefault={openByDefault}
       onOpen={handlePauseOrAbortVideo}
       onSelect={handleSwitchVideos}
       onUploadVideoError={handleUploadVideoError}
