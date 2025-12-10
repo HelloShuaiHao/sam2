@@ -3,6 +3,7 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+import logging
 import os
 import re
 import shutil
@@ -15,6 +16,8 @@ import imagesize
 from app_conf import GALLERY_PATH, POSTERS_PATH, POSTERS_PREFIX
 from data.data_types import Video
 from tqdm import tqdm
+
+logger = logging.getLogger(__name__)
 
 
 def preload_data() -> Dict[str, Video]:
@@ -70,7 +73,7 @@ def get_video(
         # Extract the first frame from video
         poster_output_path = os.path.join(POSTERS_PATH, poster_filename)
         ffmpeg = shutil.which("ffmpeg")
-        subprocess.call(
+        result = subprocess.call(
             [
                 ffmpeg,
                 "-y",
@@ -92,7 +95,12 @@ def get_video(
 
         # Extract video width and height from poster. This is important to optimize
         # rendering previews in the mosaic video preview.
-        width, height = imagesize.get(poster_output_path)
+        if result == 0 and os.path.exists(poster_output_path):
+            width, height = imagesize.get(poster_output_path)
+        else:
+            # If poster generation failed, try to get dimensions from video directly
+            logger.warning(f"Failed to generate poster for {filepath}, using default dimensions")
+            width, height = 1920, 1080  # Default dimensions
 
     return Video(
         code=video_path,
