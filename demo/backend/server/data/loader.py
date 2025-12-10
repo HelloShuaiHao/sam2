@@ -20,6 +20,44 @@ from tqdm import tqdm
 logger = logging.getLogger(__name__)
 
 
+def validate_video_file(filepath: os.PathLike) -> bool:
+    """
+    Validate if a video file is readable and not corrupted.
+    Returns True if valid, False otherwise.
+    """
+    try:
+        # Check if file exists and has size > 0
+        if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
+            logger.warning(f"Video file {filepath} does not exist or is empty")
+            return False
+
+        # Try to probe the video file with ffprobe
+        ffprobe = shutil.which("ffprobe")
+        if ffprobe:
+            result = subprocess.run(
+                [
+                    ffprobe,
+                    "-v", "error",
+                    "-select_streams", "v:0",
+                    "-count_packets",
+                    "-show_entries", "stream=codec_type",
+                    "-of", "csv=p=0",
+                    str(filepath)
+                ],
+                capture_output=True,
+                timeout=5
+            )
+            # If ffprobe returns non-zero or output is empty, video is likely corrupted
+            if result.returncode != 0 or not result.stdout:
+                logger.warning(f"Video file {filepath} failed ffprobe validation")
+                return False
+
+        return True
+    except Exception as e:
+        logger.warning(f"Error validating video file {filepath}: {e}")
+        return False
+
+
 def preload_data() -> Dict[str, Video]:
     """
     Preload data including gallery videos and their posters.
@@ -34,8 +72,17 @@ def preload_data() -> Dict[str, Video]:
     video_paths = glob(video_path_pattern, recursive=True)
 
     for p in tqdm(video_paths):
-        video = get_video(p, GALLERY_PATH)
-        all_videos[video.code] = video
+        # Validate video file before processing
+        if not validate_video_file(p):
+            logger.warning(f"Skipping corrupted or invalid video: {p}")
+            continue
+
+        try:
+            video = get_video(p, GALLERY_PATH)
+            all_videos[video.code] = video
+        except Exception as e:
+            logger.warning(f"Failed to load video {p}: {e}. Skipping this video.")
+            continue
 
     return all_videos
 
